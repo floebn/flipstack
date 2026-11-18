@@ -1,0 +1,38 @@
+{
+  "ppu": 128,
+  "tiltDeg": 54.7356103,
+  "angleStepDeg": 3,
+  "frames": 30,
+  "atlasCols": 6,
+  "cube": {
+    "w": 256,
+    "h": 256,
+    "colors": [
+      "mint",
+      "coral",
+      "amber",
+      "cream"
+    ],
+    "hex": [
+      "#35B6A4",
+      "#F27C65",
+      "#F1BD58",
+      "#F2EEE5"
+    ]
+  },
+  "tile": {
+    "w": 192,
+    "h": 128,
+    "centerZ": -0.03
+  },
+  "platform": {
+    "w": 1024,
+    "h": 640,
+    "targetZ": -0.3
+  },
+  "sunDir": [
+    0.15,
+    -0.75,
+    1.0
+  ]
+}
