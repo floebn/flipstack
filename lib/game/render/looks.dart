@@ -44,6 +44,27 @@ abstract final class Looks {
     ],
   };
 
+  /// Block-Materialien: grauer Würfel-Atlas in assets/sprites/ und, falls
+  /// vorhanden, ein Glanz-Atlas, der uneingefärbt darüber liegt.
+  static const materials = <String, (String, String?)>{
+    'mat_matte': ('cube.png', null),
+    'mat_pebble': ('cube_pebble.png', null),
+    'mat_plank': ('cube_plank.png', null),
+    'mat_facet': ('cube_facet.png', null),
+    'mat_ice': ('cube_ice.png', 'cube_ice_gloss.png'),
+    'mat_stud': ('cube_stud.png', null),
+  };
+
+  /// Rücksprung der Kanten in Würfelkanten (entspricht der Fase im
+  /// Blender-Skript). Nur für Materialien mit stark gebrochenen Kanten.
+  static const edgeInsets = <String, double>{
+    'mat_pebble': 0.23,
+    'mat_facet': 0.17,
+  };
+
+  static (String, String?) material(String id) =>
+      materials[id] ?? materials['mat_matte']!;
+
   static const backgrounds = <String, BackgroundTheme>{
     'bg_sand': BackgroundTheme.sand,
     'bg_dawn': BackgroundTheme.dawn,

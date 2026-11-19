@@ -287,7 +287,9 @@ abstract final class Achievements {
   ];
 }
 
-enum CosmeticCategory { blocks, background, platform, effect }
+/// [material] ist die Form und Oberfläche der Würfel, [blocks] ihre Farben;
+/// beides lässt sich frei kombinieren.
+enum CosmeticCategory { material, blocks, background, platform, effect }
 
 class Cosmetic {
   const Cosmetic(this.id, this.category, this.name, this.price);
@@ -301,6 +303,12 @@ class Cosmetic {
 
 abstract final class Cosmetics {
   static const all = [
+    Cosmetic('mat_matte', CosmeticCategory.material, 'Matt', 0),
+    Cosmetic('mat_pebble', CosmeticCategory.material, 'Kiesel', 600),
+    Cosmetic('mat_plank', CosmeticCategory.material, 'Planke', 800),
+    Cosmetic('mat_facet', CosmeticCategory.material, 'Facette', 1000),
+    Cosmetic('mat_ice', CosmeticCategory.material, 'Eis', 1400),
+    Cosmetic('mat_stud', CosmeticCategory.material, 'Noppe', 1800),
     Cosmetic('blocks_classic', CosmeticCategory.blocks, 'Klassik', 0),
     Cosmetic('blocks_arctic', CosmeticCategory.blocks, 'Arctic', 500),
     Cosmetic('blocks_forest', CosmeticCategory.blocks, 'Forest', 800),
@@ -314,6 +322,7 @@ abstract final class Cosmetics {
     Cosmetic('platform_moss', CosmeticCategory.platform, 'Moos', 700),
     Cosmetic('fx_dust', CosmeticCategory.effect, 'Staub', 0),
     Cosmetic('fx_confetti', CosmeticCategory.effect, 'Konfetti', 300),
+    Cosmetic('fx_shards', CosmeticCategory.effect, 'Splitter', 400),
   ];
 
   static final Map<String, Cosmetic> byId = {for (final c in all) c.id: c};

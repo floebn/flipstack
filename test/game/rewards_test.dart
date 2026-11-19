@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flipstack/game/meta/rewards.dart';
@@ -190,6 +191,18 @@ void main() {
     test('jede Freischaltung hat ein Aussehen', () {
       for (final c in Cosmetics.of(CosmeticCategory.blocks)) {
         expect(Looks.palettes[c.id]?.length, 8, reason: c.id);
+      }
+      for (final c in Cosmetics.of(CosmeticCategory.material)) {
+        final (cube, gloss) = Looks.materials[c.id]!;
+        expect(File('assets/sprites/$cube').existsSync(), isTrue, reason: c.id);
+        if (gloss != null) {
+          expect(File('assets/sprites/$gloss').existsSync(), isTrue);
+        }
+        expect(
+          File('assets/ui/mat_${c.id.substring(4)}.png').existsSync(),
+          isTrue,
+          reason: c.id,
+        );
       }
       for (final c in Cosmetics.of(CosmeticCategory.background)) {
         expect(Looks.backgrounds.containsKey(c.id), isTrue, reason: c.id);

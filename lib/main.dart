@@ -13,6 +13,9 @@ const _seed = int.fromEnvironment('FS_SEED', defaultValue: -1);
 const _autoplay = bool.fromEnvironment('FS_AUTOPLAY');
 const _coins = int.fromEnvironment('FS_COINS');
 
+// --dart-define=FS_LOOK=mat_ice,blocks_arctic  zeigt Freischaltungen ohne Kauf
+const _look = String.fromEnvironment('FS_LOOK');
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -25,6 +28,7 @@ void main() {
         seed: _seed < 0 ? null : _seed,
         autoplay: _autoplay,
         testCoins: _coins,
+        testLook: _look,
       ),
     ),
   );

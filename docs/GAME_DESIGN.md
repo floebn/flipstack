@@ -111,12 +111,13 @@ Eine Runde mit 5.000 Punkten und Höhe 20 bringt 70 Münzen, drei Tagesaufgaben 
 
 | Kategorie | Kostenlos | Kaufbar (Münzen) |
 |---|---|---|
+| Block-Material | Matt | Kiesel 600, Planke 800, Facette 1000, Eis 1400, Noppe 1800 |
 | Blockfarben | Klassik | Arctic 500, Forest 800, Candy 1000 |
 | Hintergründe | Sand | Dawn 250, Mist 400, Dusk 600 |
 | Plattformen | Schiefer | Ton 400, Moos 700 |
-| Effekte | Staub | Konfetti 300 |
+| Effekte | Staub | Konfetti 300, Splitter 400 |
 
-Alles zusammen kostet 4.950 Münzen. Jede Blockpalette behält die Reihenfolge der Farbtöne, damit Formen wiedererkennbar bleiben; ein Test prüft den Mindestabstand der Farben.
+Alles zusammen kostet 10.950 Münzen. Material und Farben lassen sich frei kombinieren. Jede Blockpalette behält die Reihenfolge der Farbtöne, damit Formen wiedererkennbar bleiben; ein Test prüft den Mindestabstand der Farben.
 
 Bis Phase 4 wechselte der Hintergrund jede Runde. Jetzt ist er eine Freischaltung, Standard ist Sand.
 

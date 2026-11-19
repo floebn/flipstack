@@ -15,6 +15,14 @@ const _name = TextStyle(
 );
 const _mintText = Color(0xFF1F8A7B);
 
+/// Färbt das graue Vorschaubild eines Materials in Mint (Grauwert 200).
+const _mintTint = ColorFilter.matrix(<double>[
+  0.265, 0, 0, 0, 0, //
+  0, 0.91, 0, 0, 0, //
+  0, 0, 0.82, 0, 0, //
+  0, 0, 0, 1, 0, //
+]);
+
 /// Reihenfolge und Namen der Reiter (Masterbrief, Abschnitt Shop).
 const _tabs = [
   (CosmeticCategory.platform, 'Plattformen'),
@@ -22,6 +30,18 @@ const _tabs = [
   (CosmeticCategory.background, 'Hintergründe'),
   (CosmeticCategory.effect, 'Effekte'),
 ];
+
+/// Kategorien je Reiter. Unter "Blöcke" stehen Material und Farben
+/// untereinander; beides lässt sich frei kombinieren.
+const _sections = {
+  CosmeticCategory.platform: [(CosmeticCategory.platform, '')],
+  CosmeticCategory.blocks: [
+    (CosmeticCategory.material, 'MATERIAL'),
+    (CosmeticCategory.blocks, 'FARBEN'),
+  ],
+  CosmeticCategory.background: [(CosmeticCategory.background, '')],
+  CosmeticCategory.effect: [(CosmeticCategory.effect, '')],
+};
 
 /// Shop als Tafel in der unteren Bildschirmhälfte. Darüber bleibt der
 /// Beispielturm des Spiels sichtbar und dient als Bühne: Ein angetipptes Stück
@@ -62,12 +82,18 @@ class _ShopPanelState extends State<ShopPanel> {
     super.dispose();
   }
 
+  /// Je Reiter das zuletzt angetippte Stück; darauf bezieht sich der Knopf.
+  final Map<CosmeticCategory, String> _focus = {};
+
   Cosmetic _current(Profile p) =>
-      Cosmetics.byId[_viewing[_tab]] ?? p.equippedIn(_tab);
+      Cosmetics.byId[_focus[_tab]] ?? p.equippedIn(_sections[_tab]!.first.$1);
 
   void _view(Cosmetic item) {
     widget.onTap();
-    setState(() => _viewing[item.category] = item.id);
+    setState(() {
+      _viewing[item.category] = item.id;
+      _focus[_tab] = item.id;
+    });
     widget.game.previewLook(_viewing);
     if (item.category == CosmeticCategory.effect) widget.game.previewEffect();
   }
@@ -199,21 +225,47 @@ class _ShopPanelState extends State<ShopPanel> {
                           ),
                         ),
                         Expanded(
-                          child: GridView.count(
+                          child: CustomScrollView(
                             key: ValueKey(_tab),
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 1.12,
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                            children: [
-                              for (final item in Cosmetics.of(_tab))
-                                _Card(
-                                  item: item,
-                                  profile: p,
-                                  viewing: item.id == current.id,
-                                  onTap: () => _view(item),
+                            slivers: [
+                              for (final (category, title)
+                                  in _sections[_tab]!) ...[
+                                if (title.isNotEmpty)
+                                  SliverPadding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      22,
+                                      2,
+                                      16,
+                                      8,
+                                    ),
+                                    sliver: SliverToBoxAdapter(
+                                      child: Text(title, style: fsLabel),
+                                    ),
+                                  ),
+                                SliverPadding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    14,
+                                  ),
+                                  sliver: SliverGrid.count(
+                                    crossAxisCount: 2,
+                                    mainAxisSpacing: 12,
+                                    crossAxisSpacing: 12,
+                                    childAspectRatio: 1.12,
+                                    children: [
+                                      for (final item in Cosmetics.of(category))
+                                        _Card(
+                                          item: item,
+                                          profile: p,
+                                          viewing: item.id == current.id,
+                                          onTap: () => _view(item),
+                                        ),
+                                    ],
+                                  ),
                                 ),
+                              ],
                             ],
                           ),
                         ),
@@ -445,6 +497,31 @@ class _Preview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     switch (item.category) {
+      case CosmeticCategory.material:
+        final name = item.id.substring(4); // mat_pebble -> pebble
+        return ColoredBox(
+          color: const Color(0x0F202B38),
+          child: Padding(
+            padding: const EdgeInsets.all(3),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ColorFiltered(
+                  colorFilter: _mintTint,
+                  child: Image.asset(
+                    'assets/ui/mat_$name.png',
+                    filterQuality: FilterQuality.medium,
+                  ),
+                ),
+                if (Looks.material(item.id).$2 != null)
+                  Image.asset(
+                    'assets/ui/mat_${name}_gloss.png',
+                    filterQuality: FilterQuality.medium,
+                  ),
+              ],
+            ),
+          ),
+        );
       case CosmeticCategory.blocks:
         final colors = Looks.palette(item.id);
         return Column(
@@ -506,7 +583,8 @@ class _Preview extends StatelessWidget {
           ),
         );
       case CosmeticCategory.effect:
-        final confetti = item.id == 'fx_confetti';
+        final confetti = item.id != 'fx_dust';
+        final shards = item.id == 'fx_shards';
         return ColoredBox(
           color: const Color(0xFFD9CDB8),
           child: Row(
@@ -517,7 +595,7 @@ class _Preview extends StatelessWidget {
                   width: 7.0 + (i % 3) * 3,
                   height: 7.0 + (i % 3) * 3,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
+                    shape: shards ? BoxShape.rectangle : BoxShape.circle,
                     color: confetti
                         ? FsColors.blocks[(i * 3) % 8]
                         : const Color(0xFFFFFAF0),

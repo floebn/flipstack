@@ -24,6 +24,7 @@ class GameScreen extends StatefulWidget {
     this.seed,
     this.autoplay = false,
     this.testCoins = 0,
+    this.testLook = '',
   });
   final bool showFps;
   final int? seed;
@@ -34,6 +35,10 @@ class GameScreen extends StatefulWidget {
 
   /// Testhilfe: Belohnungsstand mit so vielen Münzen, nur im Speicher.
   final int testCoins;
+
+  /// Testhilfe: Kennungen von Freischaltungen (durch Komma getrennt), die
+  /// ohne Kauf gezeigt werden.
+  final String testLook;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -93,6 +98,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _onReady() {
     if (!_game.assetsReady.value) return;
+    if (widget.testLook.isNotEmpty) {
+      _game.previewLook({
+        for (final id in widget.testLook.split(','))
+          if (Cosmetics.byId[id] != null) Cosmetics.byId[id]!.category: id,
+      });
+    }
     setState(() {
       _flow.go(AppState.mainMenu);
       if (widget.autoplay) _flow.go(AppState.playing);

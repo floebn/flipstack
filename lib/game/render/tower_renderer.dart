@@ -18,6 +18,8 @@ class RenderCube {
     this.squash = 1,
     this.cell,
     this.solid = true,
+    this.slot,
+    this.cameraFixed = false,
   });
 
   /// Würfelmitte.
@@ -38,6 +40,13 @@ class RenderCube {
 
   /// Fugen zu Nachbarwürfeln füllen (für feste Würfel, nicht für die Vorschau).
   final bool solid;
+
+  /// Rasterplatz (Gruppe, x, y, z), über den Nachbarn erkannt werden. Würfel
+  /// derselben Gruppe mit benachbartem Platz gelten als aneinanderliegend.
+  final (int, int, int, int)? slot;
+
+  /// Der Würfel dreht sich nicht mit der Plattform (schwebender Baustein).
+  final bool cameraFixed;
 }
 
 /// Zeichnet Plattform, Schatten und Würfel für einen beliebigen Drehwinkel
@@ -60,6 +69,7 @@ class TowerRenderer {
   /// Umfärbung der Plattform (kosmetische Freischaltung), `null` = Original.
   set platformFilter(ColorFilter? f) => _platformPaint.colorFilter = f;
   final Paint _cubePaint = Paint()..filterQuality = FilterQuality.medium;
+  final Paint _glossPaint = Paint()..filterQuality = FilterQuality.medium;
   final Paint _fill = Paint();
 
   double get _half => (grid - 1) / 2;
@@ -151,6 +161,14 @@ class TowerRenderer {
     // Würfel von hinten nach vorne; Flächen-Effekte direkt nach ihrem Würfel
     cubes.sort((a, b) => (a.wx - a.wy + a.z).compareTo(b.wx - b.wy + b.z));
     final cellSize = Size(sprites.cubeSize, sprites.cubeSize);
+    final gloss = sprites.gloss;
+    _slots.clear();
+    if (sprites.edgeInset > 0) {
+      for (final c in cubes) {
+        final s = c.slot;
+        if (s != null && c.solid) _slots.add(_slotKey(s.$1, s.$2, s.$3, s.$4));
+      }
+    }
     for (final c in cubes) {
       _cubePaint
         ..color = Color.fromRGBO(255, 255, 255, c.opacity)
@@ -160,6 +178,10 @@ class TowerRenderer {
       if (c.solid && c.squash == 1) _underlay(canvas, p, c, theta);
       if (c.squash == 1) {
         _draw(canvas, sprites.cube, src, center, scale, _cubePaint);
+        if (gloss != null && !c.invalid) {
+          _glossPaint.color = Color.fromRGBO(255, 255, 255, c.opacity);
+          _draw(canvas, gloss, src, center, scale, _glossPaint);
+        }
       } else {
         // um die Standfläche stauchen, Breite gleicht leicht aus
         final base = center.dy + 0.5 * p.unitHeight;
@@ -193,19 +215,127 @@ class TowerRenderer {
     if (markerCorner != null && pegDepth > 1) drawPeg();
   }
 
-  /// Füllt die Silhouette des (ungefasten) Würfels im leicht abgedunkelten
-  /// Eigenton. Dadurch erscheinen die Fugen zwischen benachbarten Würfeln als
-  /// weiche Falze, statt dass dahinterliegende Würfel durchscheinen.
+  final Set<int> _slots = {};
+
+  static int _slotKey(int g, int x, int y, int z) =>
+      g + 4 * ((x + 8) + 32 * ((y + 8) + 32 * (z + 8)));
+
+  /// Füllt die Silhouette des Würfels im leicht abgedunkelten Eigenton.
+  /// Dadurch erscheinen die Fugen zwischen benachbarten Würfeln als weiche
+  /// Falze, statt dass dahinterliegende Würfel durchscheinen.
+  ///
+  /// Bei Materialien mit stark gebrochenen Kanten ([SpriteSet.edgeInset] > 0)
+  /// wird die Füllung an jeder Kante zurückgenommen, an der kein Nachbar
+  /// anliegt. Sonst stünde sie als Rand um den Würfel und würde seine Form
+  /// verdecken.
   void _underlay(Canvas canvas, IsoProjection p, RenderCube c, double theta) {
     final a = c.frame == 0 ? 0.0 : theta;
     const k = 0.5;
+    final r = sprites.edgeInset;
     final pts = <(double, double)>[];
-    for (final (qx, qy) in _corners) {
-      final (rx, ry) = IsoProjection.rotate(qx * k, qy * k, a);
-      for (final dz in const [-k, k]) {
-        final o = p.projectWorld(c.wx + rx, c.wy + ry, c.z + dz);
-        pts.add((o.dx, o.dy));
+    void add(double lx, double ly, double lz) {
+      final (rx, ry) = IsoProjection.rotate(lx, ly, a);
+      final o = p.projectWorld(c.wx + rx, c.wy + ry, c.z + lz);
+      pts.add((o.dx, o.dy));
+    }
+
+    if (r <= 0) {
+      for (final (qx, qy) in _corners) {
+        add(qx * k, qy * k, -k);
+        add(qx * k, qy * k, k);
       }
+    } else {
+      // Nachbar in Richtung der lokalen Achse (0 = x, 1 = y, 2 = z)?
+      final slot = c.slot;
+      final turn = c.cameraFixed ? a : a - theta;
+      bool neighbour(int axis, int sign) {
+        if (slot == null) return false;
+        var dx = 0, dy = 0, dz = 0;
+        if (axis == 2) {
+          dz = sign;
+        } else {
+          final (vx, vy) = IsoProjection.rotate(
+            axis == 0 ? sign.toDouble() : 0,
+            axis == 1 ? sign.toDouble() : 0,
+            turn,
+          );
+          dx = vx.round();
+          dy = vy.round();
+        }
+        return _slots.contains(
+          _slotKey(slot.$1, slot.$2 + dx, slot.$3 + dy, slot.$4 + dz),
+        );
+      }
+
+      final has = [
+        for (var axis = 0; axis < 3; axis++)
+          [neighbour(axis, -1), neighbour(axis, 1)],
+      ];
+      void fill() {
+        final hull = _convexHull(pts);
+        final path = Path()..moveTo(hull[0].$1, hull[0].$2);
+        for (var i = 1; i < hull.length; i++) {
+          path.lineTo(hull[i].$1, hull[i].$2);
+        }
+        path.close();
+        canvas.drawPath(
+          path,
+          _fill..color = sprites.shade[c.color].withValues(alpha: c.opacity),
+        );
+        pts.clear();
+      }
+
+      void put(int a0, double va, int a1, double vb, int a2, double vc) {
+        final v = [0.0, 0.0, 0.0];
+        v[a0] = va;
+        v[a1] = vb;
+        v[a2] = vc;
+        add(v[0], v[1], v[2]);
+      }
+
+      // 1. Der Würfel mit zurückgenommenen Kanten: liegt ganz hinter dem
+      //    Sprite und schliesst nur dessen weiche Ränder.
+      final q = k - r - 0.015;
+      for (var along = 0; along < 3; along++) {
+        final b = (along + 1) % 3, cAxis = (along + 2) % 3;
+        for (final e in const [-1, 1]) {
+          for (final sb in const [-1, 1]) {
+            for (final sc in const [-1, 1]) {
+              put(along, e * k, b, sb * q, cAxis, sc * q);
+            }
+          }
+        }
+      }
+      fill();
+      // 2. Je anliegendem Nachbarn eine flache Scheibe an der gemeinsamen
+      //    Fläche. Sie reicht nur dort bis zur vollen Kante, wo auch quer dazu
+      //    ein Nachbar anliegt, und füllt so die Lücke, an der mehrere Würfel
+      //    zusammenstossen. An freien Kanten bleibt die Form des Würfels frei.
+      for (var axis = 0; axis < 3; axis++) {
+        final b = (axis + 1) % 3, cAxis = (axis + 2) % 3;
+        for (final sign in const [-1, 1]) {
+          if (!has[axis][sign < 0 ? 0 : 1]) continue;
+          final eb = [has[b][0] ? k : q, has[b][1] ? k : q];
+          final ec = [has[cAxis][0] ? k : q, has[cAxis][1] ? k : q];
+          if (eb[0] == q && eb[1] == q && ec[0] == q && ec[1] == q) continue;
+          for (final depth in [k, k - r]) {
+            for (final ib in const [0, 1]) {
+              for (final ic in const [0, 1]) {
+                put(
+                  axis,
+                  sign * depth,
+                  b,
+                  (ib == 0 ? -1 : 1) * eb[ib],
+                  cAxis,
+                  (ic == 0 ? -1 : 1) * ec[ic],
+                );
+              }
+            }
+          }
+          fill();
+        }
+      }
+      return;
     }
     final hull = _convexHull(pts);
     final path = Path()..moveTo(hull[0].$1, hull[0].$2);
@@ -245,6 +375,18 @@ class TowerRenderer {
         unit / sprites.ppu,
         _cubePaint,
       );
+      final gloss = sprites.gloss;
+      if (gloss != null) {
+        _glossPaint.color = const Color(0xFFFFFFFF);
+        _draw(
+          canvas,
+          gloss,
+          src,
+          p.projectWorld(x - cx, y - cy, z - cz),
+          unit / sprites.ppu,
+          _glossPaint,
+        );
+      }
     }
   }
 

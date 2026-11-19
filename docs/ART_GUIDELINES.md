@@ -76,7 +76,24 @@ Festgelegt in `tools/blender/config.json` und `fs_scene.py`. Alle Assets entsteh
 
 Es gibt ein einziges graues Würfel-Sprite (`cube.png`, Grauwert 200). Die Blockfarbe entsteht im Spiel durch Skalieren der Farbkanäle. Ein Vergleich mit echt gerenderten farbigen Würfeln zeigte kaum sichtbare Unterschiede. Vorteile: beliebig viele Blockfarben ohne zusätzlichen Bildspeicher, Grundlage für freischaltbare Farbthemen in Phase 5.
 
-Grenze des Verfahrens: Es bildet nur einfarbige matte Würfel ab. Besondere Materialien (Metall, Glas, Muster) brauchen eigene Sprites.
+Grenze des Verfahrens: Es bildet nur einfarbige matte Würfel ab. Besondere Materialien brauchen eigene Sprites.
+
+### Block-Materialien (freischaltbar)
+
+Jedes Material ist ein eigener grauer Atlas (`tools/blender/render_materials.py`) und wird wie der Standardwürfel eingefärbt. Geladen ist immer nur der gewählte Atlas.
+
+| Material | Form |
+|---|---|
+| Kiesel | stark gerundete Kanten |
+| Planke | zwei Lagen mit einer Nut, erhabene Kassette oben |
+| Facette | breite, hart geschliffene Fasen |
+| Noppe | Klemmbaustein: kantiger Körper, eine runde Noppe auf der Oberseite. Die Öffnung an der Unterseite ist aus der Spielkamera nie sichtbar und deshalb nicht modelliert |
+| Eis | glatter Würfel plus Glanz-Atlas (dünne Lichtkanten, ein schwacher Streifen je Seite, helle Oberseite), der uneingefärbt darüber liegt |
+
+Regeln:
+- Jede Form ist um die Hochachse vierfach symmetrisch, weil die Drehbilder 0–87° für jede Vierteldrehung wiederverwendet werden.
+- Details entstehen durch Geometrie, nicht durch Texturen.
+- **Glanz ist nur bei gekauften Materialien erlaubt** (Ausnahme zu Abschnitt 1) und muss an einem Turm ab Höhe 12 ruhig bleiben. Erste Fassungen von Planke (zwei Nuten) und Eis (zwei Streifen, breite Kanten) waren dafür zu unruhig und wurden vereinfacht.
 
 ## 5. Plattform
 

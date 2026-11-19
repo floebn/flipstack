@@ -222,3 +222,27 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Ergebnis: niedrigere Karte, Münzen zählen hoch, höchstens zwei Zeilen für Erfülltes, Hauptmenü als runder Knopf neben „Nochmal“.
 - Geprüft im iOS-Simulator: Hauptmenü, alle Zustände der Shop-Karten (ausgewählt, im Besitz, Preis), Anprobe von Plattform und Hintergrund, Kauf, Aufgabenblatt, Ergebnis. 70 Tests, Analyse ohne Befund.
 - Nicht geprüft: Reiter „Blöcke“ und „Effekte“ im neuen Shop, „Alle zeigen“ bei den Erfolgen, kleine Displays, Android (dort fehlt noch das Schließen des Shops über die Zurück-Taste).
+
+## Paket 2: Block-Materialien und Splitter (19.11.2026)
+
+- Neue Kategorie „Material“ mit Kiesel, Planke, Facette und Eis; kombinierbar mit jeder Farbpalette. Im Shop stehen Material und Farben im Reiter „Blöcke“ untereinander.
+- Effekt „Splitter“: kleine Dreiecke in der Farbe des abgelegten Bausteins.
+- Testschalter `--dart-define=FS_LOOK=mat_ice,blocks_arctic` zeigt Freischaltungen ohne Kauf.
+- Abweichung vom Vorschlag: Planke hat eine Nut statt drei, Eis nur einen schwachen Glanzstreifen. Beides war am hohen Turm sonst zu unruhig. Die Oberseite der Planke trägt eine Kassette statt Längsnuten, weil die Form drehsymmetrisch sein muss.
+- Geprüft im iOS-Simulator: alle vier Materialien an einem Turm der Höhe 13, Eis zusätzlich mit Arctic und Mist, Anprobe und Karten im Shop. 70 Tests, Analyse ohne Befund.
+- Nicht geprüft: Splitter im Spiel gesehen (nur gebaut), Materialien während der Drehung im Bewegtbild, Leistung auf dem Gerät mit der zweiten Bildebene bei Eis, Kauf eines Materials bis zum Neustart.
+
+## Fugenfüllung bei Kiesel und Facette (19.11.2026)
+
+- Meldung vom Gerätetest: Um Kiesel- und Facetten-Würfel stand ein Rand im abgedunkelten Eigenton, der die Form verdeckte.
+- Ursache: Die Fugenfüllung zeichnete immer die Silhouette des vollen Würfels. Bei stark gebrochenen Kanten ragt sie darüber hinaus.
+- Erster Versuch (verworfen): die Silhouette an Kanten mit Nachbar voll lassen. Die gemeinsame Hülle zog dunkle Keile quer über die Würfel und sah schlechter aus als vorher.
+- Lösung: Unter Kiesel und Facette liegt nur noch der Würfel mit zurückgenommenen Kanten, vollständig hinter dem Sprite. Zusätzlich gibt es je anliegendem Nachbarn eine flache Scheibe an der gemeinsamen Fläche, die nur dort bis zur vollen Kante reicht, wo auch quer dazu ein Nachbar anliegt. Sie füllt die Lücke, an der mehrere Würfel zusammenstoßen. Matt, Planke und Eis sind unverändert.
+- Geprüft im Simulator: Kiesel in vier Spielständen bis Höhe 3, Facette in einem. Nicht geprüft: während der Drehung, hohe Türme, auf dem Gerät.
+- Bekannt: Die Schatten auf den Oberseiten sind weiter eckig und passen nicht ganz zur gerundeten Fläche.
+
+## Material „Noppe“ (19.11.2026)
+
+- Auf Wunsch: Klemmbaustein mit runder Noppe oben, teuerstes Stück (1800). Eigene, generische Form ohne Marke oder Schriftzug.
+- Die Noppe bleibt innerhalb der Würfel-Silhouette, der Würfel darüber verdeckt sie. Fugenfüllung wie beim Standardwürfel.
+- Geprüft im Simulator: ein Spielstand bis Höhe 2. Nicht geprüft: Drehung, hohe Türme, Gerät.

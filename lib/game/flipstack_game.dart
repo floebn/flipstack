@@ -212,6 +212,10 @@ class FlipstackGame extends FlameGame {
 
   /// Effekt "Konfetti": Partikel in den Blockfarben statt hellem Staub.
   bool _confetti = false;
+
+  /// Effekt "Splitter": kleine Dreiecke in der Blockfarbe.
+  bool _shards = false;
+  final Path _shardPath = Path();
   final _rng = math.Random();
   final _popupPaint = TextPaint(
     style: const TextStyle(
@@ -346,12 +350,22 @@ class FlipstackGame extends FlameGame {
     if (!identical(palette, _renderer.sprites.palette)) {
       _renderer.sprites.setPalette(palette);
     }
+    final (cubeFile, glossFile) = Looks.material(
+      look(CosmeticCategory.material),
+    );
+    final materialId = look(CosmeticCategory.material);
+    _renderer.sprites.setMaterial(
+      cubeFile,
+      glossFile,
+      edgeInset: Looks.edgeInsets[materialId] ?? 0,
+    );
     final bg = Looks.background(look(CosmeticCategory.background));
     if (!identical(bg, _background.theme)) _background.theme = bg;
     _renderer.platformFilter = Looks.platformFilter(
       look(CosmeticCategory.platform),
     );
     _confetti = look(CosmeticCategory.effect) == 'fx_confetti';
+    _shards = look(CosmeticCategory.effect) == 'fx_shards';
   }
 
   void _resetRound(GameSession session) {
@@ -626,7 +640,7 @@ class FlipstackGame extends FlameGame {
             math.cos(a) * v,
             math.sin(a) * v,
             0.05 + _rng.nextDouble() * 0.06,
-            _rng.nextInt(8),
+            _shards ? _session.board.cells.last.color : _rng.nextInt(8),
           ),
         );
       }
@@ -782,6 +796,7 @@ class FlipstackGame extends FlameGame {
               ? 1 - 0.035 * wobble
               : 1,
           cell: falling ? null : (c.x, c.y, c.z),
+          slot: (falling ? 2 : 0, c.x, c.y, c.z),
         ),
       );
     }
@@ -828,6 +843,8 @@ class FlipstackGame extends FlameGame {
             frame: 0,
             opacity: blocked ? (1 - _overT * _overT) : _spawnT.clamp(0, 1),
             invalid: blocked,
+            slot: (1, dx, dy, dz),
+            cameraFixed: true,
           ),
         );
       }
@@ -879,6 +896,31 @@ class FlipstackGame extends FlameGame {
     for (final d in _dust) {
       final (wx, wy) = IsoProjection.rotate(d.wx, d.wy, theta);
       final o = _projection.projectWorld(wx, wy, d.z + d.t * 0.25);
+      if (_shards) {
+        // kleines Dreieck in der Farbe des Bausteins, dreht sich im Flug
+        final r = d.size * _projection.unit * 2.1 * (1 - 0.35 * d.t);
+        final a0 = d.t * 5 + d.vx;
+        _shardPath.reset();
+        for (var k = 0; k < 3; k++) {
+          final a = a0 + k * 2.0944;
+          final q = Offset(
+            o.dx + math.cos(a) * r,
+            o.dy + math.sin(a) * r * 0.8,
+          );
+          k == 0
+              ? _shardPath.moveTo(q.dx, q.dy)
+              : _shardPath.lineTo(q.dx, q.dy);
+        }
+        _shardPath.close();
+        final base = _renderer.sprites.palette[d.color];
+        _dustPaint.color = Color.lerp(
+          base,
+          const Color(0xFFFFFFFF),
+          0.25,
+        )!.withValues(alpha: 1 - d.t * d.t);
+        canvas.drawPath(_shardPath, _dustPaint);
+        continue;
+      }
       _dustPaint.color = _confetti
           ? _renderer.sprites.palette[d.color].withValues(
               alpha: 0.95 * (1 - d.t),

@@ -23,8 +23,44 @@ class SpriteSet {
   late final double platformTargetZ;
   late final List<double> sunDir;
 
-  /// Grauer Würfel, Atlas über die Drehwinkel.
-  late final Image cube;
+  /// Grauer Würfel, Atlas über die Drehwinkel. Wechselt mit dem Material.
+  late Image cube;
+
+  /// Wie weit die Kanten des Materials gegenüber dem vollen Würfel
+  /// zurückspringen (0 = kantig). Steuert die Fugenfüllung.
+  double edgeInset = 0;
+
+  /// Glanzlichter des Materials (uneingefärbt über dem Würfel) oder `null`.
+  Image? gloss;
+
+  late final Images _images;
+  String _cubeFile = 'cube.png';
+  String? _glossFile;
+  int _materialRequest = 0;
+
+  /// Wechselt das Block-Material. Geladen wird nur der gewählte Atlas, der
+  /// vorherige wird freigegeben (ausser dem Standardwürfel).
+  Future<void> setMaterial(
+    String cubeFile,
+    String? glossFile, {
+    double edgeInset = 0,
+  }) async {
+    if (cubeFile == _cubeFile && glossFile == _glossFile) return;
+    final request = ++_materialRequest;
+    final newCube = await _images.load(cubeFile);
+    final newGloss = glossFile == null ? null : await _images.load(glossFile);
+    if (request != _materialRequest) return; // inzwischen neu gewählt
+    final old = [_cubeFile, ?_glossFile];
+    cube = newCube;
+    this.edgeInset = edgeInset;
+    gloss = newGloss;
+    _cubeFile = cubeFile;
+    _glossFile = glossFile;
+    for (final f in old) {
+      if (f != 'cube.png' && f != cubeFile && f != glossFile) _images.clear(f);
+    }
+  }
+
   late final Image marker;
 
   /// Eckpfosten (drehsymmetrisch).
@@ -56,6 +92,7 @@ class SpriteSet {
     ) as Map<String, dynamic>;
     double d(Object? v) => (v as num).toDouble();
     final s = SpriteSet._()
+      .._images = images
       ..ppu = d(meta['ppu'])
       ..frames = meta['frames'] as int
       ..angleStepDeg = meta['angleStepDeg'] as int
