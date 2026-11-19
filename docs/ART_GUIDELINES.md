@@ -88,11 +88,16 @@ Jedes Material ist ein eigener grauer Atlas (`tools/blender/render_materials.py`
 | Planke | zwei Lagen mit einer Nut, erhabene Kassette oben |
 | Facette | breite, hart geschliffene Fasen |
 | Noppe | Klemmbaustein: kantiger Körper, eine runde Noppe auf der Oberseite. Die Öffnung an der Unterseite ist aus der Spielkamera nie sichtbar und deshalb nicht modelliert |
+| Beton | Poren, Ankerlöcher und eine Schalungsfuge, ausgeschnitten aus dem Körper |
+| Stoff | weicher Körper mit Flechtmuster aus 5×5 abwechselnd hohen und flachen Polstern je Fläche |
+| Vulkan | dunkler, kantig gebrochener Stein; Risse sind im Atlas hell und leuchten dadurch in der Blockfarbe |
+| Neonglas | dunkler Glaskörper mit hellen Kanten (werden zur kräftigen Blockfarbe) plus Glanz-Atlas mit weißem Kern |
 | Eis | glatter Würfel plus Glanz-Atlas (dünne Lichtkanten, ein schwacher Streifen je Seite, helle Oberseite), der uneingefärbt darüber liegt |
 
 Regeln:
 - Jede Form ist um die Hochachse vierfach symmetrisch, weil die Drehbilder 0–87° für jede Vierteldrehung wiederverwendet werden.
 - Details entstehen durch Geometrie, nicht durch Texturen.
+- **Farbe muss erkennbar bleiben:** Formen werden über ihre Farbe unterschieden. Bei Materialien mit dunklen Flächen (Vulkan, Neonglas) trägt ein heller Teil des Atlas die Farbe, und die Flächen dürfen nicht so dunkel sein, dass alle Farben gleich wirken. Die Fugenfüllung wird für sie stärker abgedunkelt (`Looks.seamDarken`).
 - **Glanz ist nur bei gekauften Materialien erlaubt** (Ausnahme zu Abschnitt 1) und muss an einem Turm ab Höhe 12 ruhig bleiben. Erste Fassungen von Planke (zwei Nuten) und Eis (zwei Streifen, breite Kanten) waren dafür zu unruhig und wurden vereinfacht.
 
 ## 5. Plattform
@@ -111,6 +116,7 @@ Eigene Sprite-Sätze aus `tools/blender/render_platforms.py` (Ruhebild plus 30 D
 | Marmor | weiße Platten auf warmgrauem Stein, zwei auskragende Stufen |
 | Gletscher | Eisplatte, darunter ein gestufter, hart facettierter Eisblock |
 | Insel | Grasdeck, Erdschicht, gestufter Fels (schwebende Insel) |
+| Futuristisch | Metallplatten, drei umlaufende LED-Bänder, Eckmodule mit Lampe, gestufter Technikkern |
 
 Regeln:
 - Oberseite der Kacheln bei z = 0, 5×5-Raster und Fugen bleiben lesbar. Zwei leicht verschiedene Töne im Schachbrett helfen beim Zählen der Felder.
@@ -133,7 +139,19 @@ Ton und Moos sind weiterhin Umfärbungen der Standardplattform.
 
 Vier ruhige, helle Farbstimmungen (Sand, Dawn, Mist, Dusk), prozedural gezeichnet: senkrechter Verlauf, Lichtschein hinter dem Turm, vier große Rauten im Seitenverhältnis der Isometrie, die sich kaum merklich bewegen. Die Stimmung wechselt mit jeder Runde.
 
-Regeln: Der Hintergrund ist immer heller und blasser als jeder Würfel. Dunkle Schrift muss überall lesbar bleiben. Dunkle Themen (Midnight, Neon) brauchen ein eigenes Schriftschema und folgen in Phase 5.
+Regeln: Ein heller Hintergrund ist immer heller und blasser als jeder Würfel, dunkle Schrift muss überall lesbar bleiben.
+
+### Hintergründe mit Szenerie (freischaltbar)
+
+Wald, Herbst, Winter und Weltraum bestehen aus drei Teilen:
+
+1. **Himmel:** prozeduraler Verlauf. Er endet unten in der Dunstfarbe der Szenerie. Rauten gibt es hier nicht.
+2. **Szenerie:** ein Blender-Rendering am unteren Bildrand (`tools/blender/render_backgrounds.py`, 1242×1100, transparent). Low-Poly-Formen in drei Tiefenstaffeln; entfernte Staffeln sind zur Dunstfarbe aufgehellt. Die Ränder sind höher als die Mitte, damit der Bereich hinter dem Turm ruhig bleibt. Der Boden liegt auf 35 % der Bildhöhe: Der Streifen darunter liegt hinter den Bedienknöpfen.
+3. **Teilchen:** wenige, langsame, blasse Punkte (Pollen, Blätter, Schnee) oder funkelnde Sterne.
+
+Unterwasser zeichnet zusätzlich vier blasse, pendelnde Lichtbahnen und aufsteigende Blasen, die Neonstadt Lichtspuren ferner Fahrzeuge.
+
+**Dunkle Themen (Weltraum, Neonstadt):** `BackgroundTheme.dark` schaltet `fsDarkBackground`. Schrift und Symbole, die direkt auf dem Hintergrund stehen, werden hell (`FsColors.onBackground`): Punktestand, Beschriftungen, Logo, Drehknöpfe, Punkte-Einblendungen, Statusleiste. Karten und Blätter bleiben hell mit dunkler Schrift.
 
 Abweichung vom Brief: Die Hintergründe sind nicht in Blender gerendert. Prozedurale Verläufe sind auflösungsunabhängig, brauchen keine Bilddateien und lassen sich je Thema umfärben.
 

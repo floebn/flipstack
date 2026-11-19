@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:flame/cache.dart';
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/animation.dart' show Curves;
@@ -231,6 +232,21 @@ class FlipstackGame extends FlameGame {
       color: Color(0xFFD9573F),
     ),
   );
+  final _popupPaintLight = TextPaint(
+    style: const TextStyle(
+      fontSize: 22,
+      fontWeight: FontWeight.w800,
+      color: Color(0xFFF2EEE5),
+    ),
+  );
+  final _popupAccentLight = TextPaint(
+    style: const TextStyle(
+      fontSize: 19,
+      fontWeight: FontWeight.w800,
+      color: Color(0xFFF7A893),
+    ),
+  );
+  final _sceneImages = Images(prefix: 'assets/backgrounds/');
   final _dustPaint = Paint();
 
   double get _thetaDeg {
@@ -358,9 +374,20 @@ class FlipstackGame extends FlameGame {
       cubeFile,
       glossFile,
       edgeInset: Looks.edgeInsets[materialId] ?? 0,
+      seamDarken: Looks.seamDarken[materialId] ?? 0.2,
     );
     final bg = Looks.background(look(CosmeticCategory.background));
-    if (!identical(bg, _background.theme)) _background.theme = bg;
+    if (!identical(bg, _background.theme)) {
+      _background.theme = bg;
+      _background.scene = null;
+      fsDarkBackground.value = bg.dark;
+      final file = bg.scene;
+      if (file != null) {
+        _sceneImages.load(file).then((img) {
+          if (identical(_background.theme, bg)) _background.scene = img;
+        });
+      }
+    }
     _renderer.sprites.setPlatform(
       Looks.platformSets[look(CosmeticCategory.platform)],
     );
@@ -760,6 +787,8 @@ class FlipstackGame extends FlameGame {
       size.toSize(),
       _time,
       _projection.projectWorld(0, 0, s.height * 0.5),
+      // im Shop liegt die Szenerie über der Tafel (untere 60 %)
+      sceneBottom: size.y * (1 - 0.60 * stage),
     );
     _renderer.renderGroundShadow(
       canvas,
@@ -939,12 +968,10 @@ class FlipstackGame extends FlameGame {
       final o = _projection.projectWorld(wx, wy, p.z + t * 0.9 + p.delay * 4.4);
       final a = (1 - t * t).clamp(0.0, 1.0);
       canvas.saveLayer(null, Paint()..color = Color.fromRGBO(0, 0, 0, a));
-      (p.accent ? _popupAccent : _popupPaint).render(
-        canvas,
-        p.text,
-        Vector2(o.dx, o.dy),
-        anchor: Anchor.center,
-      );
+      (_background.theme.dark
+              ? (p.accent ? _popupAccentLight : _popupPaintLight)
+              : (p.accent ? _popupAccent : _popupPaint))
+          .render(canvas, p.text, Vector2(o.dx, o.dy), anchor: Anchor.center);
       canvas.restore();
     }
 

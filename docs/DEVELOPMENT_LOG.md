@@ -255,3 +255,21 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Größe: `assets/sprites` wächst von 9 auf 32 MB.
 - Geprüft im iOS-Simulator: alle vier im Spiel bei ruhender Plattform mit Würfeln, Karten im Shop, Anprobe der Insel. 70 Tests, Analyse ohne Befund.
 - Nicht geprüft: Drehung im Bewegtbild, Ladezeit und Speicher auf dem Gerät, Lesbarkeit von Schatten und markierten Feldern auf den hellen Plattformen (Marmor, Gletscher) bei hohem Turm, Insel und Gletscher hinter den Bedienknöpfen bei Rundenbeginn.
+
+## Paket 4: Hintergründe (19.11.2026)
+
+- Vier neue Hintergründe mit gerenderter Szenerie: Wald, Herbst, Winter, Weltraum. Der Shop zeigt sie als Bild, die Anprobe legt die Szenerie über die Shop-Tafel.
+- Helles Schriftschema für den dunklen Weltraum (Schrift, Drehknöpfe, Combo-Anzeige, Einblendungen, Statusleiste).
+- Erste Fassung der Szenerien war im Querformat gerendert; im Hochformat lagen die Bäume fast ganz hinter den Knöpfen. Neu gerendert mit höherem Ausschnitt.
+- Größe: `assets/backgrounds` rund 2 MB. Im Speicher liegt nur die gewählte Szenerie (etwa 5,5 MB).
+- Geprüft im iOS-Simulator: alle vier im Spiel bei Höhe 1, Hauptmenü mit Weltraum, Shop-Karten, Anprobe des Waldes. 70 Tests, Analyse ohne Befund.
+- Nicht geprüft: Weltraum im Spiel nach der Korrektur von Drehknöpfen und Combo-Anzeige, Tutorial, Pause und Hinweise auf dunklem Hintergrund, hohe Türme vor den Szenerien, andere Seitenverhältnisse, Leistung der Teilchen auf dem Gerät.
+- Bekannt: Die Schiefer-Plattform hebt sich vom Weltraum nur schwach ab.
+
+## Sieben weitere Stücke auf Wunsch (19.11.2026)
+
+- Materialien: Beton, Stoff, Vulkan, Neonglas. Welten: Unterwasser, Neonstadt (dunkel). Plattform: Futuristisch.
+- Vulkan und Neonglas nutzen die Einfärbung umgekehrt: Der Körper ist im Atlas dunkel, Risse und Kanten sind hell und tragen die Blockfarbe.
+- Vulkan nach dem ersten Blick am Turm vereinfacht: Stein heller, ein Riss je Seite weniger. Vorher waren die Farben kaum zu unterscheiden.
+- Geprüft im iOS-Simulator: alle vier Materialien an einem Turm der Höhe 6, beide Welten, die Plattform im Hauptmenü. 70 Tests, Analyse ohne Befund.
+- Nicht geprüft: Drehung, hohe Türme mit Vulkan und Stoff, Shop-Karten der neuen Stücke, Leistung auf dem Gerät, Farbsehschwäche bei Vulkan und Neonglas.

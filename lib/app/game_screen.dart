@@ -1,5 +1,8 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../shared/theme/fs_colors.dart';
 
 import '../features/gameplay/gameplay_overlays.dart';
 import '../features/home/home_overlay.dart';
@@ -210,6 +213,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // Dunkler Hintergrund: helle Schrift und helle Statusleiste
+    return ValueListenableBuilder<bool>(
+      valueListenable: fsDarkBackground,
+      builder: (context, dark, _) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+        child: _buildScreen(context),
+      ),
+    );
+  }
+
+  Widget _buildScreen(BuildContext context) {
     _game.safeTop = MediaQuery.paddingOf(context).top;
     final state = _flow.state;
     return Scaffold(

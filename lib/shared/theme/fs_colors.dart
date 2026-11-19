@@ -1,5 +1,11 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
+
+/// Der gewählte Hintergrund ist dunkel: Schrift und Symbole, die direkt auf
+/// dem Hintergrund stehen, werden hell. Gesetzt vom Spiel.
+final ValueNotifier<bool> fsDarkBackground = ValueNotifier(false);
+
 /// Verbindliches Farbsystem von FLIPSTACK (siehe docs/ART_GUIDELINES.md).
 abstract final class FsColors {
   // Grundfarben aus dem Masterbrief
@@ -18,6 +24,14 @@ abstract final class FsColors {
   /// Creme für Würfel: etwas dunkler als die UI-Creme, damit die Oberseite
   /// im Licht nicht zu reinem Weiss ausbrennt.
   static const blockCream = Color(0xFFE6DFCF);
+
+  /// Schrift direkt auf dem Hintergrund (nicht auf Karten).
+  static Color get onBackground => fsDarkBackground.value ? cream : navy;
+
+  /// Gegenfarbe zu [onBackground] (Symbol auf einem Knopf in dieser Farbe).
+  static Color get onBackgroundInverse => fsDarkBackground.value ? navy : cream;
+  static Color get onBackgroundMuted =>
+      fsDarkBackground.value ? const Color(0xB3F2EEE5) : textMuted;
 
   // Bedeutungsfarben der Oberfläche
   static const text = navy;

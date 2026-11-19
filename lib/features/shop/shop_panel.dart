@@ -548,17 +548,24 @@ class _Preview extends StatelessWidget {
               colors: [t.top, t.bottom],
             ),
           ),
-          child: Align(
-            alignment: const Alignment(0.6, 0.2),
-            child: Transform.rotate(
-              angle: 0.785,
-              child: Container(
-                width: 30,
-                height: 30,
-                color: t.shape.withValues(alpha: 0.45),
-              ),
-            ),
-          ),
+          child: t.scene != null
+              ? Image.asset(
+                  'assets/backgrounds/${t.scene}',
+                  fit: BoxFit.cover,
+                  alignment: const Alignment(0, 0.1),
+                  filterQuality: FilterQuality.medium,
+                )
+              : Align(
+                  alignment: const Alignment(0.6, 0.2),
+                  child: Transform.rotate(
+                    angle: 0.785,
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      color: t.shape.withValues(alpha: 0.45),
+                    ),
+                  ),
+                ),
         );
       case CosmeticCategory.platform:
         return ColoredBox(

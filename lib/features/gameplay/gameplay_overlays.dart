@@ -46,10 +46,13 @@ class GameHud extends StatelessWidget {
               semanticLabel: 'Pause',
             ),
           ),
-          const Positioned(
+          Positioned(
             right: 26,
             top: 62,
-            child: Text('NÄCHSTER', style: fsLabel),
+            child: Text(
+              'NÄCHSTER',
+              style: fsLabel.copyWith(color: FsColors.onBackgroundMuted),
+            ),
           ),
           if (h.notice != null)
             Positioned(
@@ -89,6 +92,8 @@ class GameHud extends StatelessWidget {
                   child: RoundIconButton(
                     Icons.rotate_left_rounded,
                     onTap: () => onRotate(1),
+                    color: FsColors.onBackground,
+                    iconColor: FsColors.onBackgroundInverse,
                     semanticLabel: 'Plattform nach links drehen',
                   ),
                 ),
@@ -110,6 +115,8 @@ class GameHud extends StatelessWidget {
                   child: RoundIconButton(
                     Icons.rotate_right_rounded,
                     onTap: () => onRotate(-1),
+                    color: FsColors.onBackground,
+                    iconColor: FsColors.onBackgroundInverse,
                     semanticLabel: 'Plattform nach rechts drehen',
                   ),
                 ),
@@ -133,15 +140,18 @@ class _Score extends StatelessWidget {
       children: [
         Text(
           '${h.score}',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 44,
             height: 1,
             fontWeight: FontWeight.w800,
-            color: FsColors.navy,
+            color: FsColors.onBackground,
           ),
         ),
         const SizedBox(height: 4),
-        Text('HÖHE ${h.height}   ·   BESTWERT ${h.best}', style: fsLabel),
+        Text(
+          'HÖHE ${h.height}   ·   BESTWERT ${h.best}',
+          style: fsLabel.copyWith(color: FsColors.onBackgroundMuted),
+        ),
         const SizedBox(height: 8),
         // Combo: zeigt den Multiplikator der nächsten sauberen Ablage
         AnimatedOpacity(
@@ -149,7 +159,9 @@ class _Score extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           child: FsChip(
             'COMBO ${h.combo}   ×${h.multiplier.toStringAsFixed(1).replaceAll('.', ',')}',
-            color: FsColors.navy,
+            color: fsDarkBackground.value
+                ? const Color(0xFF34435A)
+                : FsColors.navy,
             textColor: FsColors.reward,
           ),
         ),

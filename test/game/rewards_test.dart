@@ -206,6 +206,10 @@ void main() {
       }
       for (final c in Cosmetics.of(CosmeticCategory.background)) {
         expect(Looks.backgrounds.containsKey(c.id), isTrue, reason: c.id);
+        final scene = Looks.backgrounds[c.id]!.scene;
+        if (scene != null) {
+          expect(File('assets/backgrounds/$scene').existsSync(), isTrue);
+        }
       }
       for (final c in Cosmetics.of(CosmeticCategory.platform)) {
         expect(

@@ -52,13 +52,14 @@ class HomeOverlay extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text.rich(
+                Text.rich(
                   TextSpan(
                     children: [
                       TextSpan(
                         text: 'FLIP',
-                        style: TextStyle(color: FsColors.navy),
+                        style: TextStyle(color: FsColors.onBackground),
                       ),
+
                       TextSpan(
                         text: 'STACK',
                         style: TextStyle(color: FsColors.mint),
@@ -75,7 +76,10 @@ class HomeOverlay extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text(
                   'DREHEN  ·  STAPELN  ·  HOCH HINAUS',
-                  style: fsLabel.copyWith(fontSize: 11.5),
+                  style: fsLabel.copyWith(
+                    fontSize: 11.5,
+                    color: FsColors.onBackgroundMuted,
+                  ),
                 ),
               ],
             ),
@@ -91,7 +95,7 @@ class HomeOverlay extends StatelessWidget {
                     'BESTWERT ${stats.bestScore}   ·   HÖHE ${stats.bestHeight}',
                     style: fsLabel.copyWith(
                       fontSize: 12.5,
-                      color: FsColors.navy,
+                      color: FsColors.onBackground,
                     ),
                   ),
                   const SizedBox(height: 16),

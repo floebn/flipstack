@@ -137,7 +137,47 @@ def island(r):
     return 2.85
 
 
-PLATFORMS = {"oak": oak, "marble": marble, "glacier": glacier, "island": island}
+def glow(name, hex_color, strength=1.6):
+    """Selbstleuchtendes Material (LED)."""
+    m = bpy.data.materials.new("P_led_" + name)
+    m.use_nodes = True
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = fs.hex_rgba(hex_color)
+    em.inputs["Strength"].default_value = strength
+    nt.links.new(em.outputs[0], out.inputs["Surface"])
+    return m
+
+
+def future(r):
+    """Futuristisch: Metallplatten, umlaufende LED-Bänder, Eckmodule und ein
+    gestufter Technikkern darunter."""
+    metal = mat("gunmetal", "#3C4451", 0.38)
+    dark = mat("gunmetal_dark", "#2A313B", 0.45)
+    led = glow("cyan", "#5FE3F0")
+    box("Base", SIZE, SIZE, 0.34, TOP, metal, r, 0.05, 2)
+    box("Led1", SIZE + 0.03, SIZE + 0.03, 0.05, TOP - 0.15, led, r, 0.01, 1)
+    box("Mid", SIZE - 0.36, SIZE - 0.36, 0.30, TOP - 0.32, dark, r, 0.04, 2)
+    box("Led2", SIZE - 0.33, SIZE - 0.33, 0.04, TOP - 0.48, led, r, 0.008, 1)
+    frustum("Core1", SIZE / 2 - 0.30, 1.85, 0.62, TOP - 0.60, metal, r)
+    box("Led3", 3.74, 3.74, 0.05, TOP - 1.20, led, r, 0.01, 1)
+    frustum("Core2", 1.80, 1.25, 0.70, TOP - 1.24, dark, r)
+    tiles(r, "#9AA6B5", "#8793A3", 0.3)
+    h = SIZE / 2 - 0.16
+    amber = glow("amber", "#F1BD58", 1.3)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            box(f"Module_{sx}_{sy}", 0.40, 0.40, 0.46, TOP + 0.02, dark, r, 0.04, 2,
+                xy=(sx * h, sy * h))
+            box(f"Lamp_{sx}_{sy}", 0.20, 0.20, 0.04, TOP + 0.035, amber, r, 0.01, 1,
+                xy=(sx * h, sy * h))
+    return 1.95
+
+
+PLATFORMS = {"oak": oak, "marble": marble, "glacier": glacier, "island": island,
+             "future": future}
 ONLY = os.environ.get("FS_ONLY", "")
 META_PATH = os.path.join(OUT, "platforms.json")
 meta = json.load(open(META_PATH)) if os.path.exists(META_PATH) else {}

@@ -53,6 +53,10 @@ abstract final class Looks {
     'mat_facet': ('cube_facet.png', null),
     'mat_ice': ('cube_ice.png', 'cube_ice_gloss.png'),
     'mat_stud': ('cube_stud.png', null),
+    'mat_concrete': ('cube_concrete.png', null),
+    'mat_fabric': ('cube_fabric.png', null),
+    'mat_volcano': ('cube_volcano.png', null),
+    'mat_neon': ('cube_neon.png', 'cube_neon_gloss.png'),
   };
 
   /// Rücksprung der Kanten in Würfelkanten (entspricht der Fase im
@@ -60,6 +64,13 @@ abstract final class Looks {
   static const edgeInsets = <String, double>{
     'mat_pebble': 0.23,
     'mat_facet': 0.17,
+  };
+
+  /// Wie stark die Fugenfüllung gegenüber der Blockfarbe abgedunkelt wird
+  /// (Standard 0,2). Materialien mit dunklen Flächen brauchen dunkle Fugen.
+  static const seamDarken = <String, double>{
+    'mat_volcano': 0.6,
+    'mat_neon': 0.6,
   };
 
   static (String, String?) material(String id) =>
@@ -70,6 +81,12 @@ abstract final class Looks {
     'bg_dawn': BackgroundTheme.dawn,
     'bg_mist': BackgroundTheme.mist,
     'bg_dusk': BackgroundTheme.dusk,
+    'bg_forest': BackgroundTheme.forest,
+    'bg_autumn': BackgroundTheme.autumn,
+    'bg_winter': BackgroundTheme.winter,
+    'bg_space': BackgroundTheme.space,
+    'bg_underwater': BackgroundTheme.underwater,
+    'bg_city': BackgroundTheme.city,
   };
 
   /// Umfärbung der Plattform als (Faktor, Versatz) je Farbkanal. Der Versatz
@@ -86,6 +103,7 @@ abstract final class Looks {
     'platform_marble': 'marble',
     'platform_glacier': 'glacier',
     'platform_island': 'island',
+    'platform_future': 'future',
   };
 
   /// Vorschaubild einer Plattform für den Shop.

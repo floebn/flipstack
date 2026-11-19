@@ -36,6 +36,8 @@ class SpriteSet {
   /// zurückspringen (0 = kantig). Steuert die Fugenfüllung.
   double edgeInset = 0;
 
+  double _seamDarken = 0.2;
+
   /// Glanzlichter des Materials (uneingefärbt über dem Würfel) oder `null`.
   Image? gloss;
 
@@ -50,6 +52,7 @@ class SpriteSet {
     String cubeFile,
     String? glossFile, {
     double edgeInset = 0,
+    double seamDarken = 0.2,
   }) async {
     if (cubeFile == _cubeFile && glossFile == _glossFile) return;
     final request = ++_materialRequest;
@@ -59,6 +62,8 @@ class SpriteSet {
     final old = [_cubeFile, ?_glossFile];
     cube = newCube;
     this.edgeInset = edgeInset;
+    _seamDarken = seamDarken;
+    setPalette(palette);
     gloss = newGloss;
     _cubeFile = cubeFile;
     _glossFile = glossFile;
@@ -167,7 +172,8 @@ class SpriteSet {
     palette = colors;
     tint = [for (final c in colors) tintFor(c)];
     shade = [
-      for (final c in colors) Color.lerp(c, const Color(0xFF16202B), 0.2)!,
+      for (final c in colors)
+        Color.lerp(c, const Color(0xFF16202B), _seamDarken)!,
     ];
   }
 
