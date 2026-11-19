@@ -169,3 +169,18 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Keine eigene Schrift; es wird die Systemschrift verwendet
 - Spielende-Regeln unverändert (Gipfel bei 30); die Umstellung auf Endlos ist besprochen, aber zurückgestellt
 - Wird die App beendet, geht die laufende Runde verloren
+
+## 19.11.2026 – Fehlerbehebung: kein Ton
+
+**Befund des Nutzers:** Auf dem iPhone war kein Ton zu hören, die Vibration funktionierte.
+
+**Ursache:** Die Audio-Konfiguration kombinierte „Stummschalter beachten“ mit „mit anderen Apps mischen“. Die Bibliothek `audioplayers` lehnt diese Kombination auf iOS ab und bricht ab. Der Fehler wurde im Code abgefangen und nicht gemeldet, daher blieb der Ton dauerhaft aus. Meine Aussage in Phase 4, die Audio-Sitzung starte ohne Fehler, war dadurch irreführend: Das Protokoll zeigte keinen Fehler, weil er verschluckt wurde.
+
+**Behebung:**
+- iOS nutzt jetzt ausdrücklich die Kategorie „ambient“ (beachtet den Stummschalter, lässt andere Musik laufen); Android spielt ohne Audiofokus
+- Dieselbe Konfiguration wird bei jedem Abspielen mitgegeben, sonst setzt `flame_audio` eine eigene
+- Audiofehler werden im Debug-Protokoll ausgegeben statt verschluckt
+
+**Geprüft:** Im iOS-Simulator meldet das Protokoll „audio: bereit (20 Klänge)“; bei Tippen, Drehen und Ablegen keine Fehlermeldung. **Gehört habe ich weiterhin nichts**, der Nachweis am Gerät steht aus.
+
+**Hinweis:** Ist das iPhone stummgeschaltet, bleibt das Spiel absichtlich still.
