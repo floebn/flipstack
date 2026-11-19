@@ -87,6 +87,43 @@ Im ersten Entwurf wuchs der Multiplikator um 0,25 bis ×3,0. Im Testlauf war das
 
 Bestwert, größte Höhe, gespielte Runden, Durchschnittspunkte, beste Combo, Gesamtzahl abgelegter Bausteine. Gespeichert lokal auf dem Gerät, ohne Konto und ohne Netz.
 
+## 3b. Belohnungssystem (Phase 5, `lib/game/meta/rewards.dart`)
+
+Grundsatz: Münzen kaufen nur Aussehen, nie einen Spielvorteil. Es gibt keine Wartezeiten, keine Leben und keinen Login-Streak. Ein verpasster Tag kostet nichts.
+
+**Münzen verdienen**
+
+| Quelle | Münzen |
+|---|---|
+| Runde | 1 je 100 Punkte, mindestens 1 |
+| Etappe | 10 je erreichter Etappe (Höhe 10, 20, …) |
+| Tagesaufgabe | 40–60 |
+| Wochenaufgabe | 150–250 |
+| Erfolg | 20–300, einmalig |
+
+Eine Runde mit 5.000 Punkten und Höhe 20 bringt 70 Münzen, drei Tagesaufgaben zusammen rund 150.
+
+**Aufgaben:** Jeden Tag drei aus zwölf, jede Woche (ab Montag) drei aus acht. Die Auswahl hängt nur vom Datum ab und enthält nie zwei Aufgaben derselben Art. Belohnungen werden am Rundenende automatisch gutgeschrieben, es gibt nichts abzuholen.
+
+**Erfolge:** zwölf, an Lebenszeit-Zählern (Höhe, Combo, Runden, Drehungen, saubere Ablagen, volle Ebenen, Punkte).
+
+**Freischaltungen**
+
+| Kategorie | Kostenlos | Kaufbar (Münzen) |
+|---|---|---|
+| Blockfarben | Klassik | Arctic 500, Forest 800, Candy 1000 |
+| Hintergründe | Sand | Dawn 250, Mist 400, Dusk 600 |
+| Plattformen | Schiefer | Ton 400, Moos 700 |
+| Effekte | Staub | Konfetti 300 |
+
+Alles zusammen kostet 4.950 Münzen. Jede Blockpalette behält die Reihenfolge der Farbtöne, damit Formen wiedererkennbar bleiben; ein Test prüft den Mindestabstand der Farben.
+
+Bis Phase 4 wechselte der Hintergrund jede Runde. Jetzt ist er eine Freischaltung, Standard ist Sand.
+
+**Ergebnisbildschirm:** verdiente Münzen, erfüllte Aufgaben und Erfolge, Fortschritt zur günstigsten fehlenden Freischaltung.
+
+Nicht umgesetzt: besondere Blockmaterialien und Animationen als Freischaltung, saisonale Events, der optionale Streak.
+
 ## 4. Offene Fragen für den Spieltest
 
 - Wie lange dauert eine gute Runde jetzt wirklich, und wo endet sie (vor 20, zwischen 20 und 30, danach)?

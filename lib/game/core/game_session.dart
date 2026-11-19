@@ -126,6 +126,12 @@ class GameSession {
   /// Saubere Ablagen in Folge.
   int combo = 0;
   int bestCombo = 0;
+
+  /// Anzahl sauberer Ablagen in dieser Runde.
+  int cleanPlacements = 0;
+
+  /// Vollständig gefüllte Ebenen (von unten, lückenlos).
+  int get fullLayers => _fullLayers;
   int _milestones = 0;
   int _fullLayers = 0;
   int _nextPieceId = 1;
@@ -181,6 +187,7 @@ class GameSession {
     }
     final clean = p.isFullySupported;
     combo = clean ? combo + 1 : 0;
+    if (clean) cleanPlacements++;
     if (combo > bestCombo) bestCombo = combo;
     // Meilensteine alle 5 Ebenen; jeder zweite ist eine Etappe.
     final reached = board.maxHeight ~/ milestoneEvery;

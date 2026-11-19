@@ -194,3 +194,13 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Testschalter `--dart-define=FS_START_HEIGHT=n` startet mit n vollen Ebenen.
 - Geprüft: 52 Tests, `flutter analyze` ohne Befund, im iOS-Simulator die Ansagen bei Etappe 10 und 20 und ein Spielende mit einem Fünfer.
 - Nicht geprüft: Spielgefühl und Rundenlänge mit Menschen, Darstellung von U-Form und Kreuz im Spiel, die Blender-Übersicht der Bausteine (nicht neu gerendert).
+
+## Phase 5 – Belohnungssystem (19.11.2026)
+
+- Münzen, drei Tages- und drei Wochenaufgaben, zwölf Erfolge, Shop mit zehn kaufbaren Freischaltungen in vier Kategorien.
+- Hauptmenü mit Kontostand, Aufgaben und Shop; Ergebnis mit Münzen, Erfülltem und Fortschritt zur nächsten Freischaltung.
+- Testschalter `--dart-define=FS_COINS=n`: Testkonto mit n Münzen, wird nicht gespeichert.
+- **Fehler gefunden und behoben:** Beim App-Start meldet das System „im Vordergrund“, bevor der Stand geladen ist. Das Erneuern der Aufgaben hat dann einen leeren Stand gespeichert und den vorhandenen überschrieben. Aufgefallen im Simulator (Testkonto zeigte 0 statt 3000 Münzen), jetzt per Test abgesichert.
+- Geprüft: 70 Tests, `flutter analyze` ohne Befund. Im iOS-Simulator: Hauptmenü, Aufgabenblatt, Shop, Kauf mit Rückfrage, Wechsel von Blockfarben, Hintergrund und Plattform, Ergebnis mit Münzen und Aufgaben.
+- Nicht geprüft: Konfetti-Effekt im Spiel, Plattform „Moos“, Paletten „Forest“ und „Candy“ im Spiel, Tages- und Wochenwechsel auf dem Gerät (nur per Test), Unterscheidbarkeit der Paletten bei Farbsehschwäche, Android.
+- Bekannt: Auf dem Ergebnisbildschirm verdeckt die Karte jetzt mehr vom Turm.

@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 
 import '../features/gameplay/gameplay_overlays.dart';
 import '../features/home/home_overlay.dart';
+import '../features/rewards/rewards_ui.dart';
 import '../features/settings/settings_sheet.dart';
 import '../game/flipstack_game.dart';
+import '../game/meta/rewards.dart';
 import '../services/feedback/game_feedback.dart';
+import '../services/storage/profile_store.dart';
 import '../services/storage/settings_store.dart';
 import '../services/storage/stats_store.dart';
 import 'app_flow.dart';
@@ -19,6 +22,7 @@ class GameScreen extends StatefulWidget {
     this.showFps = false,
     this.seed,
     this.autoplay = false,
+    this.testCoins = 0,
   });
   final bool showFps;
   final int? seed;
@@ -26,6 +30,9 @@ class GameScreen extends StatefulWidget {
   /// Testhilfe: überspringt das Menü und spielt selbst (ohne Ton, ohne
   /// die gespeicherte Statistik zu verändern).
   final bool autoplay;
+
+  /// Testhilfe: Belohnungsstand mit so vielen Münzen, nur im Speicher.
+  final int testCoins;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -39,7 +46,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   late final GameFeedback _feedback = widget.autoplay
       ? SilentFeedback()
       : _deviceFeedback;
+  late final ProfileController _profile = ProfileController(
+    widget.testCoins > 0
+        ? MemoryProfileStore(Profile(coins: widget.testCoins))
+        : widget.autoplay
+        ? MemoryProfileStore()
+        : LocalProfileStore(),
+  );
   late final FlipstackGame _game = FlipstackGame(
+    profile: _profile,
     store: widget.autoplay ? MemoryStatsStore() : LocalStatsStore(),
     showFps: widget.showFps,
     seed: widget.seed,
@@ -56,6 +71,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (!widget.autoplay) _deviceFeedback.init();
     _game.assetsReady.addListener(_onReady);
     _game.hud.addListener(_onHud);
+    _profile.addListener(_onProfile);
+  }
+
+  void _onProfile() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -63,6 +83,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _game.assetsReady.removeListener(_onReady);
     _game.hud.removeListener(_onHud);
+    _profile.removeListener(_onProfile);
     super.dispose();
   }
 
@@ -84,6 +105,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Zurück im Vordergrund: neuer Tag bringt neue Aufgaben.
+    if (state == AppLifecycleState.resumed) _profile.refresh();
     // App verlässt den Vordergrund: laufende Runde pausieren.
     if (state != AppLifecycleState.resumed && _flow.pauseIfActive()) {
       _game.paused = true;
@@ -162,6 +185,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       if (_tutorial != null) _finishTutorial();
       _flow.go(AppState.mainMenu);
       _game.paused = false;
+      _profile.refresh();
       _game.showMenu();
     });
   }
@@ -188,6 +212,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           if (state == AppState.mainMenu)
             HomeOverlay(
               stats: _game.stats,
+              profile: _profile.profile,
+              onQuests: () {
+                _feedback.tap();
+                showQuestsSheet(context, _profile);
+              },
+              onShop: () {
+                _feedback.tap();
+                showShopSheet(context, _profile, onTap: _feedback.tap);
+              },
               onPlay: _play,
               onSettings: () {
                 _feedback.tap();
@@ -228,6 +261,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           if (state == AppState.gameOver && _game.hud.value.result != null)
             ResultsCard(
               result: _game.hud.value.result!,
+              profile: _profile.profile,
               game: _game,
               onRestart: _restart,
               onHome: _home,

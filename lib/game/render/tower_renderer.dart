@@ -55,6 +55,10 @@ class TowerRenderer {
   static const _dirs = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
   final Paint _sprite = Paint()..filterQuality = FilterQuality.medium;
+  final Paint _platformPaint = Paint()..filterQuality = FilterQuality.medium;
+
+  /// Umfärbung der Plattform (kosmetische Freischaltung), `null` = Original.
+  set platformFilter(ColorFilter? f) => _platformPaint.colorFilter = f;
   final Paint _cubePaint = Paint()..filterQuality = FilterQuality.medium;
   final Paint _fill = Paint();
 
@@ -112,7 +116,7 @@ class TowerRenderer {
       Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
       p.projectWorld(0, 0, sprites.platformTargetZ),
       still ? scale : scale / sprites.platformFrameScale,
-      _sprite,
+      _platformPaint,
     );
 
     if (markerCorner != null) {

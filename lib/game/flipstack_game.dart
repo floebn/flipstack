@@ -13,6 +13,9 @@ import 'core/board.dart';
 import 'core/game_session.dart';
 import 'core/piece.dart';
 import 'core/player_stats.dart';
+import 'meta/rewards.dart';
+import '../services/storage/profile_store.dart';
+import 'render/looks.dart';
 import '../shared/theme/fs_colors.dart';
 import 'core/rules.dart';
 import 'projection/iso_projection.dart';
@@ -32,6 +35,7 @@ class RoundResult {
     required this.newBest,
     required this.stats,
     required this.seconds,
+    this.rewards = const RoundRewards(),
     this.maxSpread = 4,
     this.blockCause,
     this.blockedPiece,
@@ -44,6 +48,9 @@ class RoundResult {
   final int score, height, pieces, bestCombo;
   final bool newBest;
   final PlayerStats stats;
+
+  /// Münzen, erfüllte Aufgaben und neue Erfolge dieser Runde.
+  final RoundRewards rewards;
 
   /// Zuletzt erlaubter Höhenunterschied (für die Begründung des Spielendes).
   final int maxSpread;
@@ -98,7 +105,10 @@ class _Popup {
 }
 
 class _Dust {
-  _Dust(this.wx, this.wy, this.z, this.vx, this.vy, this.size);
+  _Dust(this.wx, this.wy, this.z, this.vx, this.vy, this.size, this.color);
+
+  /// Farbindex für den Effekt "Konfetti".
+  final int color;
   double wx, wy;
   final double z, vx, vy, size;
   double t = 0;
@@ -111,15 +121,20 @@ enum GameEvent { moved, rotated, placed }
 class FlipstackGame extends FlameGame {
   FlipstackGame({
     StatsStore? store,
+    ProfileController? profile,
     this.showFps = false,
     this.seed,
     this.autoplay = false,
     GameFeedback? feedback,
     this.onEvent,
   }) : store = store ?? MemoryStatsStore(),
+       profile = profile ?? ProfileController(MemoryProfileStore()),
        feedback = feedback ?? SilentFeedback();
 
   final StatsStore store;
+
+  /// Belohnungsstand: Münzen, Aufgaben, Erfolge, gewähltes Aussehen.
+  final ProfileController profile;
   final GameFeedback feedback;
   final void Function(GameEvent event)? onEvent;
 
@@ -155,7 +170,6 @@ class FlipstackGame extends FlameGame {
 
   late final TowerRenderer _renderer;
   final BackgroundPainter _background = BackgroundPainter();
-  int _round = 0;
   final IsoProjection _projection = IsoProjection(origin: Offset.zero, unit: 1);
   late GameSession _session;
   PlayerStats _stats = const PlayerStats();
@@ -195,6 +209,9 @@ class FlipstackGame extends FlameGame {
   double _overT = 0;
   final List<_Popup> _popups = [];
   final List<_Dust> _dust = [];
+
+  /// Effekt "Konfetti": Partikel in den Blockfarben statt hellem Staub.
+  bool _confetti = false;
   final _rng = math.Random();
   final _popupPaint = TextPaint(
     style: const TextStyle(
@@ -226,6 +243,9 @@ class FlipstackGame extends FlameGame {
   Future<void> onLoad() async {
     _renderer = TowerRenderer(await SpriteSet.load(FsColors.blocks));
     _stats = await store.load();
+    await profile.load();
+    _applyLook();
+    profile.addListener(_applyLook);
     if (showFps) {
       add(
         FpsTextComponent(position: Vector2(12, 130), scale: Vector2.all(0.5)),
@@ -283,11 +303,24 @@ class FlipstackGame extends FlameGame {
     _publish();
   }
 
+  /// Übernimmt das gewählte Aussehen (Blockfarben, Hintergrund, Plattform,
+  /// Effekt) aus dem Belohnungsstand.
+  void _applyLook() {
+    final p = profile.profile;
+    final palette = Looks.palette(p.equippedIn(CosmeticCategory.blocks).id);
+    if (!identical(palette, _renderer.sprites.palette)) {
+      _renderer.sprites.setPalette(palette);
+    }
+    final bg = Looks.background(p.equippedIn(CosmeticCategory.background).id);
+    if (!identical(bg, _background.theme)) _background.theme = bg;
+    _renderer.platformFilter = Looks.platformFilter(
+      p.equippedIn(CosmeticCategory.platform).id,
+    );
+    _confetti = p.equippedIn(CosmeticCategory.effect).id == 'fx_confetti';
+  }
+
   void _resetRound(GameSession session) {
     _session = session;
-    // Jede Runde eine andere Farbstimmung (später frei wählbar)
-    _background.theme =
-        BackgroundTheme.all[_round++ % BackgroundTheme.all.length];
     _result = null;
     _notice = null;
     _fromDeg = 0;
@@ -461,6 +494,17 @@ class FlipstackGame extends FlameGame {
     if (s.phase == GamePhase.gameOver) {
       final newBest = s.score > _stats.bestScore && s.score > 0;
       _stats = _stats.recordRound(s);
+      final rewards = profile.recordRound(
+        RoundSummary(
+          score: s.score,
+          height: s.height,
+          pieces: s.piecesPlaced,
+          bestCombo: s.bestCombo,
+          rotations: s.rotations,
+          cleanPlacements: s.cleanPlacements,
+          layers: s.fullLayers,
+        ),
+      );
       store.save(_stats);
       _result = RoundResult(
         reason: s.gameOverReason!,
@@ -471,6 +515,7 @@ class FlipstackGame extends FlameGame {
         newBest: newBest,
         stats: _stats,
         seconds: _playSeconds.round(),
+        rewards: rewards,
         maxSpread: s.maxSpread,
         blockCause: s.blockCause,
         blockedPiece: s.blockCause == null ? null : s.current,
@@ -542,6 +587,7 @@ class FlipstackGame extends FlameGame {
             math.cos(a) * v,
             math.sin(a) * v,
             0.05 + _rng.nextDouble() * 0.06,
+            _rng.nextInt(8),
           ),
         );
       }
@@ -792,7 +838,11 @@ class FlipstackGame extends FlameGame {
     for (final d in _dust) {
       final (wx, wy) = IsoProjection.rotate(d.wx, d.wy, theta);
       final o = _projection.projectWorld(wx, wy, d.z + d.t * 0.25);
-      _dustPaint.color = Color.fromRGBO(255, 250, 240, 0.75 * (1 - d.t));
+      _dustPaint.color = _confetti
+          ? _renderer.sprites.palette[d.color].withValues(
+              alpha: 0.95 * (1 - d.t),
+            )
+          : Color.fromRGBO(255, 250, 240, 0.75 * (1 - d.t));
       canvas.drawCircle(o, d.size * _projection.unit * (0.6 + d.t), _dustPaint);
     }
 

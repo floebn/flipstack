@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../game/meta/rewards.dart';
+import '../rewards/rewards_ui.dart';
 import '../../app/app_flow.dart';
 import '../../game/core/game_session.dart';
 import '../../game/core/piece.dart';
@@ -404,11 +406,13 @@ class ResultsCard extends StatelessWidget {
   const ResultsCard({
     super.key,
     required this.result,
+    required this.profile,
     required this.game,
     required this.onRestart,
     required this.onHome,
   });
   final RoundResult result;
+  final Profile profile;
   final FlipstackGame game;
   final VoidCallback onRestart, onHome;
 
@@ -481,7 +485,9 @@ class ResultsCard extends StatelessWidget {
                         _Stat('ZEIT', _time(r.seconds)),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
+                    RewardsSummary(rewards: r.rewards, profile: profile),
+                    const SizedBox(height: 14),
                     PillButton('NOCHMAL', onTap: onRestart, height: 60),
                     Pressable(
                       onTap: onHome,

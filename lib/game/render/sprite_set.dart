@@ -39,13 +39,13 @@ class SpriteSet {
   late final List<Image> platform;
   late final double platformFrameScale;
 
-  late final List<Color> palette;
+  late List<Color> palette;
 
   /// Farbfilter je Blockfarbe.
-  late final List<ColorFilter> tint;
+  late List<ColorFilter> tint;
 
   /// Abgedunkelte Blockfarbe für die Fugen zwischen Würfeln.
-  late final List<Color> shade;
+  late List<Color> shade;
   late final ColorFilter invalidTint;
   late final double _gray;
 
@@ -68,12 +68,8 @@ class SpriteSet {
       ..pegOffset = d(meta['peg']['offset'])
       ..platformTargetZ = d(meta['platform']['targetZ'])
       ..platformFrameScale = d(meta['platform']['frameScale'])
-      ..sunDir = [for (final v in meta['sunDir'] as List) d(v)]
-      ..palette = palette;
-    s.tint = [for (final c in palette) s.tintFor(c)];
-    s.shade = [
-      for (final c in palette) Color.lerp(c, const Color(0xFF16202B), 0.2)!,
-    ];
+      ..sunDir = [for (final v in meta['sunDir'] as List) d(v)];
+    s.setPalette(palette);
     s.invalidTint = s.tintFor(const Color(0xFFE5484D));
     s.cube = await images.load('cube.png');
     s.marker = await images.load('tile_marker.png');
@@ -84,6 +80,15 @@ class SpriteSet {
         await images.load('platform_${i.toString().padLeft(3, '0')}.png'),
     ];
     return s;
+  }
+
+  /// Wechselt die Blockfarben (kosmetische Freischaltung).
+  void setPalette(List<Color> colors) {
+    palette = colors;
+    tint = [for (final c in colors) tintFor(c)];
+    shade = [
+      for (final c in colors) Color.lerp(c, const Color(0xFF16202B), 0.2)!,
+    ];
   }
 
   /// Filter, der das graue Würfel-Sprite in [c] einfärbt. Die Kanäle werden

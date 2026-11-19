@@ -1,6 +1,6 @@
 # FLIPSTACK – Technische Architektur
 
-Stand: Phase 4 · Darstellungsentscheidung in Abschnitt 6
+Stand: Phase 5 · Darstellungsentscheidung in Abschnitt 6
 
 ## 1. Stack
 
@@ -139,9 +139,12 @@ Spiellogik und `IsoProjection` hängen nicht von der Darstellung ab. Falls C1 be
 |---|---|---|
 | Statistik | `StatsStore` | lokal (`shared_preferences`), im Speicher |
 | Einstellungen | `Settings` | lokal |
+| Belohnungsstand | `ProfileStore`, `ProfileController` | lokal (`shared_preferences`, JSON), im Speicher |
 | Ton und Vibration | `GameFeedback` | Gerät (`flame_audio` 2.12.2, Plattform-Haptik), stumm |
 
 Schlägt Laden, Speichern oder Abspielen fehl, läuft das Spiel ohne diese Funktion weiter. Die App nutzt bisher kein Netz. Werbung und Analytics kommen in Phase 6 und werden erst nach Einwilligung gestartet.
+
+**Belohnungen:** Die Regeln (Münzen, Aufgaben, Erfolge, Kauf) liegen als reines Dart in `lib/game/meta/rewards.dart`; `Profile` ist unveränderlich, jede Aktion liefert einen neuen Stand. Das Aussehen der Freischaltungen steht in `lib/game/render/looks.dart`. Blockfarben wechseln über den Farbfilter des grauen Würfel-Sprites, die Plattform über einen Farbfilter auf ihrem Sprite, beides ohne zusätzliche Bilder. Vor dem Laden speichert der Controller nichts, damit ein leerer Stand den gespeicherten nicht überschreibt.
 
 **Ton:** Alle Klänge entstehen durch Synthese (`tools/audio/make_sounds.py`), es gibt keine fremden Aufnahmen. Der Stummschalter wird respektiert, Musik anderer Apps läuft weiter.
 
