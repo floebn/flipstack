@@ -28,7 +28,8 @@
   "platform": {
     "w": 1024,
     "h": 640,
-    "targetZ": -0.3
+    "targetZ": -0.3,
+    "frameScale": 0.5
   },
   "sunDir": [
     0.15,

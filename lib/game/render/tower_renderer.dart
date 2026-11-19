@@ -72,13 +72,14 @@ class TowerRenderer {
     final frame = sprites.frameFor(thetaDeg);
     final scale = p.unit / sprites.ppu;
 
-    final img = sprites.platform[frame];
+    final still = thetaDeg % 90 == 0;
+    final img = still ? sprites.platformStill : sprites.platform[frame];
     _draw(
       canvas,
       img,
       Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
       p.projectWorld(0, 0, sprites.platformTargetZ),
-      scale,
+      still ? scale : scale / sprites.platformFrameScale,
       _sprite,
     );
 

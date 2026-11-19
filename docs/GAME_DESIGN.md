@@ -1,6 +1,6 @@
 # FLIPSTACK – Game Design
 
-Stand: Phase 1b · Kernregeln im Prototyp umgesetzt und per Bot-Simulation eingestellt
+Stand: Phase 2 · Kernspiel umgesetzt, Regeln und Punkte per Bot-Simulation eingestellt
 
 Der Brief legt Rotation, Rasterplatzierung und faire Physik fest. Offen lässt er, **warum ein Turm irgendwann nicht mehr weiterwächst**. Das ist die wichtigste Designfrage. Hier ist mein Vorschlag, mit Stellschrauben für die Tests.
 
@@ -14,39 +14,55 @@ Der Brief legt Rotation, Rasterplatzierung und faire Physik fest. Offen lässt e
 6. **Spielende**, sobald der aktuelle Baustein in keiner Position und keiner der vier Orientierungen regelkonform passt.
 7. **Maximalhöhe** 30 Ebenen beendet die Runde als „Gipfel erreicht“.
 
-### Ergebnis der Bot-Simulation (`dart run tool/balance_sim.dart`, 300 Runden je Zeile)
+### Ergebnis der Bot-Simulation (`dart run tool/balance_sim.dart`, 300 Runden je Zeile, alle Formen mit Stufen)
 
 | Auflage / Höhenunterschied | Zufallsspieler (Median Steine) | Einfacher Planer (Median, beste 10 %) |
 |---|---|---|
-| **50 % / 4 (gewählt)** | 20 | 52, ab 120 |
-| 50 % / 3 | 16 | 37, ab 79 |
-| 50 % / 2 | 12 | 15, ab 39 |
-| 100 % / 4 | 12 | 25, ab 42 |
-| 100 % / 3 | 12 | 20, ab 32 |
+| **50 % / 4 (gewählt)** | 24 | 57, ab 108 |
+| 50 % / 5 | 28 | 113, ab 212 |
+| 50 % / 3 | 18 | 49, ab 111 |
 
-Bei rund 3–4 Sekunden je Zug entsprechen 52 Steine etwa 3 Minuten. Das trifft die Zielgröße von 2–4 Minuten. Die Bots sind einfach; wie sich die Regeln für Menschen anfühlen, muss ein Spieltest zeigen.
+Bei rund 3–4 Sekunden je Zug entsprechen 57 Steine etwa 3 Minuten. Das trifft die Zielgröße von 2–4 Minuten. Die Bots sind einfach; wie sich die Regeln für Menschen anfühlen, muss ein Spieltest zeigen.
 
-## 2. Bausteinfolge und Schwierigkeit
+## 2. Bausteine und Schwierigkeit
 
-- Im Prototyp von Beginn an: Einzelwürfel, Doppelblock, Dreier, Ecke, 2×2, T. Die gestaffelte Einführung und weitere Formen (1×4, Platten) folgen in Phase 2.
+13 Formen, eingeführt in vier Stufen (`PieceLibrary.forProgress`):
+
+| Ab Baustein Nr. | Neue Formen |
+|---|---|
+| 1 | Einzelwürfel, Doppelblock, Dreier, Ecke, 2×2 |
+| 11 | T, stehender Doppelblock (zwei Würfel hoch) |
+| 23 | Vierer, L, gespiegeltes L |
+| 37 | S, Z, Stufe (liegender Doppelblock mit aufgesetztem Würfel); Einzelwürfel doppelt im Beutel |
+
 - **Vorschau des nächsten Bausteins** (ein Stein voraus).
-- Schwierigkeit steigt über die **Formenmischung** (mehr sperrige Formen mit der Höhe), **nicht über Zeitdruck**. Ein optionales Zeitlimit gibt es zunächst nicht.
-- Faire Zufallsfolge („Beutel“-System, seedbar): Jede Form kommt genau einmal vor, bevor sich eine wiederholt.
+- Die Schwierigkeit steigt über die Formenmischung, nicht über Zeitdruck. Es gibt kein Zeitlimit.
+- Faire Zufallsfolge („Beutel“-System, seedbar): Jede Form des aktuellen Vorrats kommt einmal vor, bevor sich eine wiederholt.
+- **Vorwarnung:** Bleiben weniger als 4 gültige Ablagen (über alle Positionen und Orientierungen), zeigt das Spiel „Nur noch N Plätze“.
 
-## 3. Punkte (transparent)
+## 3. Punkte (transparent, in `GameSession.place`)
 
 | Ereignis | Punkte |
 |---|---|
-| Baustein abgelegt | 10 × Anzahl Würfel |
-| **Sauber abgelegt** (100 % gestützt, kein neuer Hohlraum) | +50 %, zählt für die Combo *(Phase 2)* |
-| **Ebene vollständig** (alle N×N Felder einer Höhe belegt) | +100 je Ebene |
-| Höhenmeilenstein (alle 5 Ebenen) | +200 *(Phase 2)* |
-| Combo *(Phase 2)* | Multiplikator ×1,0 → +0,25 pro saubere Ablage in Folge, max. ×3,0; endet bei einer Ablage mit neuem Hohlraum |
+| Baustein abgelegt | 10 je Würfel |
+| **Sauber abgelegt** (liegt vollständig auf) | +50 % |
+| **Combo** | Jede saubere Ablage in Folge erhöht den Multiplikator um 0,1 (×1,0 → höchstens ×2,0). Er gilt für die beiden Zeilen darüber. Eine Ablage mit Überhang setzt ihn zurück. |
+| **Ebene vollständig** (alle 25 Felder einer Höhe belegt) | +100 je Ebene |
+| **Höhenmeilenstein** (alle 5 Ebenen) | +200 |
 
-„Geschickte Rotation“ wird nicht separat belohnt. Sie zeigt sich in sauberen Ablagen. Das vermeidet willkürliche Bonuspunkte.
+Jeder Posten wird beim Ablegen über dem Baustein eingeblendet. Der Punktestand ist exakt die Summe dieser Posten (per Test abgesichert).
+
+Überhänge sind damit eine bewusste Abwägung: Sie retten schwierige Lagen, kosten aber die Combo. „Geschickte Rotation“ wird nicht separat belohnt, sie zeigt sich in sauberen Ablagen.
+
+Im ersten Entwurf wuchs der Multiplikator um 0,25 bis ×3,0. Im Testlauf war das Maximum nach wenigen Zügen erreicht und blieb dauerhaft stehen, deshalb die flachere Kurve.
+
+## 3a. Statistik (dauerhaft gespeichert)
+
+Bestwert, größte Höhe, gespielte Runden, Durchschnittspunkte, beste Combo, Gesamtzahl abgelegter Bausteine. Gespeichert lokal auf dem Gerät, ohne Konto und ohne Netz.
 
 ## 4. Offene Fragen für den Spieltest
 
 - Ist die Regel „gleichmäßig bauen“ ohne Erklärung verständlich? Derzeit erscheint nur der Hinweis „Turm wird zu ungleichmäßig“.
-- Fühlt sich das Spielende fair an, oder kommt es überraschend? Eine Vorwarnung („nur noch wenige Plätze“) fehlt noch.
+- Fühlt sich das Spielende fair an, oder kommt es trotz Vorwarnung überraschend?
+- Ist die Combo-Kurve motivierend, oder wirkt ×2,0 als Obergrenze zu niedrig?
 - Spielfeld 5×5 oder 4×4, Vorschau auf 1 oder 2 Steine.

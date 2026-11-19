@@ -4,7 +4,8 @@ Aufruf: Blender -b --python tools/blender/render_sprites.py
 Ergebnis (assets/sprites/):
   cube_<farbe>.png   Atlas 6×5, Winkel 0..87° in 3°-Schritten (90° ≡ 0° wegen Symmetrie)
   tile_marker.png    Atlas 6×5, Eck-Markierung
-  platform_XXX.png   Plattform ohne Markierung, 0..87°
+  platform_still.png Plattform bei 0° in voller Auflösung
+  platform_XXX.png   Plattform ohne Markierung, 0..87°, halbe Auflösung
   sprites.json       Metadaten (ppu, Kachelgrössen, Ankerpunkte)
 """
 import json
@@ -66,6 +67,12 @@ PLAT_TARGET_Z = -0.3
 fresh(PLAT_W, PLAT_H, (0, 0, PLAT_TARGET_Z))
 rig = fs.make_rig()
 fs.add_platform(rig, with_marker=False)
+# Standbild in voller Auflösung, Drehbilder in halber (spart ca. 75 % Bildspeicher;
+# während der 0,3 s Drehung ist der Unterschied nicht sichtbar).
+sc = bpy.context.scene
+rig.rotation_euler = (0, 0, 0)
+fs.render(os.path.join(OUT, "platform_still.png"))
+sc.render.resolution_percentage = 50
 for k, a in enumerate(ANGLES):
     rig.rotation_euler = (0, 0, math.radians(a))
     fs.render(os.path.join(OUT, f"platform_{k:03d}.png"))
@@ -81,7 +88,7 @@ meta = {
              "hex": [fs.CFG["colors"][c] for c in fs.CFG["cube_colors"]]},
     "tile": {"w": TILE_W, "h": TILE_H, "centerZ": -fs.TILE_H / 2},
     # Bildmitte der Plattform-Sprites entspricht Weltpunkt (0, 0, targetZ)
-    "platform": {"w": PLAT_W, "h": PLAT_H, "targetZ": PLAT_TARGET_Z},
+    "platform": {"w": PLAT_W, "h": PLAT_H, "targetZ": PLAT_TARGET_Z, "frameScale": 0.5},
     "sunDir": fs.CFG["sun"]["dir"],
 }
 json.dump(meta, open(os.path.join(OUT, "sprites.json"), "w"), indent=2)

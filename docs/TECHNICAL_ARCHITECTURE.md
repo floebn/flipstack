@@ -1,6 +1,6 @@
 # FLIPSTACK – Technische Architektur
 
-Stand: Phase 1a · Darstellungsentscheidung getroffen (Abschnitt 6)
+Stand: Phase 2 · Darstellungsentscheidung in Abschnitt 6
 
 ## 1. Stack
 
@@ -10,7 +10,7 @@ Stand: Phase 1a · Darstellungsentscheidung getroffen (Abschnitt 6)
 | Spiel | Flame 1.38 | Game Loop, Sprite-Batching, Eingabe, Overlays |
 | Physik | **keine Physik-Engine**, deterministische Animationen | Brief 3.6: kontrolliert, fair, vorhersehbar |
 | Assets | Blender 5.3, headless per Python-Skript | reproduzierbar, eine Kamera für alles |
-| Speicherung | `shared_preferences` für Einstellungen, JSON-Datei bzw. `hive_ce` für Fortschritt | Entscheidung in Phase 2 nach Datenumfang |
+| Speicherung | `shared_preferences` 2.5.6, Statistik als JSON hinter der Schnittstelle `StatsStore` | Datenumfang ist klein; ein Wechsel ist ohne Änderung am Spiel möglich |
 | Werbung / Käufe | `google_mobile_ads`, `in_app_purchase` | Phase 6, hinter Schnittstellen |
 
 ## 2. Schichten
@@ -103,9 +103,9 @@ screen = project(worldX, worldY, worldZ, theta)
 
 | Schwäche | Abhilfe (Phase 1b/2) |
 |---|---|
-| Würfel werfen keine Schatten **auf andere Würfel**; in der Referenz ist das sichtbar | Schatten-Overlays je Würfelfläche (Oberseite/Seiten abdunkeln, wenn ein Würfel in Lichtrichtung davorsteht) |
-| Bodenschatten sind vereinfacht und laufen bei Zwischenwinkeln leicht über die Plattformkante | Schatten auf die gedrehte Plattformfläche beschneiden |
-| Plattform-Sprites belegen ca. 80 MB Bildspeicher (30 Bilder à 1024×640) | Drehbilder in halber Auflösung, nur das Standbild in voller Auflösung; alternativ Plattform aus Kachel-Sprites zusammensetzen |
+| Würfel werfen keine Schatten auf die **Seitenflächen** anderer Würfel | Oberseiten und Plattformfelder erhalten seit Phase 1b Schatten; Seitenflächen folgen in Phase 3 |
+| ~~Bodenschatten laufen über die Plattformkante~~ | **Erledigt in Phase 1b:** Schatten werden je Feld beschnitten |
+| ~~Plattform-Sprites belegen ca. 80 MB Bildspeicher~~ | **Erledigt in Phase 2:** Drehbilder in halber Auflösung, Standbild in voller. Rechnerisch ca. 22 MB statt 79 MB; auf dem Gerät noch nicht gemessen |
 | Jeder Würfel ist ein eigener Zeichenaufruf | alle Farben in einen Atlas, dann `Canvas.drawAtlas` |
 
 ### Rückfallweg

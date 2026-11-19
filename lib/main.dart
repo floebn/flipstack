@@ -4,10 +4,11 @@ import 'package:flutter/services.dart';
 
 import 'game/core/game_session.dart';
 import 'game/flipstack_game.dart';
+import 'services/storage/stats_store.dart';
 
-// Debug-Schalter: --dart-define=FS_FPS=true  (FPS-Anzeige)
-//                 --dart-define=FS_AUTOPLAY=true  (spielt selbst, für Tests)
-//                 --dart-define=FS_SEED=7    (feste Bausteinfolge)
+// Debug-Schalter: --dart-define=FS_FPS=true       FPS-Anzeige
+//                 --dart-define=FS_AUTOPLAY=true  spielt selbst (für Tests)
+//                 --dart-define=FS_SEED=7         feste Bausteinfolge
 const _fps = bool.fromEnvironment('FS_FPS');
 const _seed = int.fromEnvironment('FS_SEED', defaultValue: -1);
 const _autoplay = bool.fromEnvironment('FS_AUTOPLAY');
@@ -16,6 +17,8 @@ const _navy = Color(0xFF202B38);
 const _cream = Color(0xFFF2EEE5);
 const _mint = Color(0xFF35B6A4);
 const _coral = Color(0xFFF27C65);
+const _amber = Color(0xFFF1BD58);
+const _muted = Color(0x99202B38);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +37,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   late final FlipstackGame _game = FlipstackGame(
+    store: LocalStatsStore(),
     showFps: _fps,
     seed: _seed < 0 ? null : _seed,
     autoplay: _autoplay,
@@ -56,84 +60,103 @@ class _GameScreenState extends State<GameScreen> {
           ),
           ValueListenableBuilder<HudState>(
             valueListenable: _game.hud,
-            builder: (context, h, _) => Stack(
-              children: [
-                SafeArea(
-                  child: Stack(
-                    children: [
-                      Positioned(left: 22, top: 10, child: _Score(h)),
-                      const Positioned(
-                        right: 30,
-                        top: 12,
-                        child: Text(
-                          'NÄCHSTER',
-                          style: TextStyle(
-                            fontSize: 10,
-                            letterSpacing: 1.4,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0x99202B38),
+            builder: (context, h, _) {
+              final over = h.result != null;
+              return Stack(
+                children: [
+                  SafeArea(
+                    child: Stack(
+                      children: [
+                        if (!over)
+                          Positioned(left: 22, top: 10, child: _Score(h)),
+                        if (!over)
+                          const Positioned(
+                            right: 30,
+                            top: 12,
+                            child: Text('NÄCHSTER', style: _label),
                           ),
-                        ),
-                      ),
-                      if (h.hint != null)
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 124,
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 7,
+                        if (!over && (h.hint != null || h.warning != null))
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 104,
+                            child: Center(
+                              child: _Chip(
+                                h.hint ?? h.warning!,
+                                color: h.hint != null ? _coral : _amber,
+                                textColor: h.hint != null
+                                    ? Colors.white
+                                    : _navy,
                               ),
-                              decoration: BoxDecoration(
-                                color: _coral,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                h.hint!,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
+                            ),
+                          ),
+                        if (!over)
+                          Positioned(
+                            left: 20,
+                            right: 20,
+                            bottom: 22,
+                            child: Row(
+                              children: [
+                                _RoundButton(
+                                  icon: Icons.rotate_left_rounded,
+                                  onTap: () => _game.rotate(1),
                                 ),
-                              ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: _DropButton(
+                                    enabled: h.canDrop,
+                                    onTap: _game.drop,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                _RoundButton(
+                                  icon: Icons.rotate_right_rounded,
+                                  onTap: () => _game.rotate(-1),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      Positioned(
-                        left: 20,
-                        right: 20,
-                        bottom: 22,
-                        child: Row(
-                          children: [
-                            _RoundButton(
-                              icon: Icons.rotate_left_rounded,
-                              onTap: () => _game.rotate(1),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: _DropButton(
-                                enabled: h.canDrop,
-                                onTap: _game.drop,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            _RoundButton(
-                              icon: Icons.rotate_right_rounded,
-                              onTap: () => _game.rotate(-1),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                if (h.gameOver != null) _GameOver(h, onRestart: _game.restart),
-              ],
-            ),
+                  if (over) _GameOver(h.result!, onRestart: _game.restart),
+                ],
+              );
+            },
           ),
         ],
+      ),
+    );
+  }
+}
+
+const _label = TextStyle(
+  fontSize: 10.5,
+  letterSpacing: 1.3,
+  fontWeight: FontWeight.w700,
+  color: _muted,
+);
+
+class _Chip extends StatelessWidget {
+  const _Chip(this.text, {required this.color, this.textColor = Colors.white});
+  final String text;
+  final Color color, textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: textColor,
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+        ),
       ),
     );
   }
@@ -158,13 +181,16 @@ class _Score extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          'HÖHE ${h.height}   ·   BESTWERT ${h.best}',
-          style: const TextStyle(
-            fontSize: 11,
-            letterSpacing: 1.2,
-            fontWeight: FontWeight.w700,
-            color: Color(0x99202B38),
+        Text('HÖHE ${h.height}   ·   BESTWERT ${h.best}', style: _label),
+        const SizedBox(height: 8),
+        // Combo: zeigt den Multiplikator der nächsten sauberen Ablage
+        AnimatedOpacity(
+          opacity: h.combo >= 1 ? 1 : 0,
+          duration: const Duration(milliseconds: 180),
+          child: _Chip(
+            'COMBO ${h.combo}   ×${h.multiplier.toStringAsFixed(1).replaceAll('.', ',')}',
+            color: _navy,
+            textColor: _amber,
           ),
         ),
       ],
@@ -228,92 +254,131 @@ class _DropButton extends StatelessWidget {
   }
 }
 
+/// Ergebnis der Runde. Liegt im unteren Bildschirmdrittel, damit der fertige
+/// Turm darüber sichtbar bleibt.
 class _GameOver extends StatelessWidget {
-  const _GameOver(this.h, {required this.onRestart});
-  final HudState h;
+  const _GameOver(this.r, {required this.onRestart});
+  final RoundResult r;
   final VoidCallback onRestart;
 
   @override
   Widget build(BuildContext context) {
-    final summit = h.gameOver == GameOverReason.summit;
+    final summit = r.reason == GameOverReason.summit;
     return Positioned.fill(
-      child: ColoredBox(
-        color: const Color(0x66202B38),
-        child: Center(
-          child: Container(
-            width: 300,
-            padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
-            decoration: BoxDecoration(
-              color: _cream,
-              borderRadius: BorderRadius.circular(28),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  summit ? 'GIPFEL ERREICHT' : 'KEIN PLATZ MEHR',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    letterSpacing: 2,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0x99202B38),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        builder: (context, t, child) => Opacity(
+          opacity: t,
+          child: Transform.translate(
+            offset: Offset(0, 40 * (1 - t)),
+            child: child,
+          ),
+        ),
+        child: SafeArea(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+              padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
+              decoration: BoxDecoration(
+                color: _cream,
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x33202B38),
+                    blurRadius: 30,
+                    offset: Offset(0, 10),
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '${h.score}',
-                  style: const TextStyle(
-                    fontSize: 64,
-                    height: 1.05,
-                    fontWeight: FontWeight.w800,
-                    color: _navy,
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    summit ? 'GIPFEL ERREICHT' : 'KEIN PLATZ MEHR',
+                    style: _label.copyWith(fontSize: 12.5, letterSpacing: 2),
                   ),
-                ),
-                if (h.newBest)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 2),
-                    child: Text(
-                      'Neuer Bestwert',
-                      style: TextStyle(
-                        color: _coral,
-                        fontWeight: FontWeight.w800,
+                  const SizedBox(height: 6),
+                  Text(
+                    '${r.score}',
+                    style: const TextStyle(
+                      fontSize: 60,
+                      height: 1.05,
+                      fontWeight: FontWeight.w800,
+                      color: _navy,
+                    ),
+                  ),
+                  Text(
+                    r.newBest
+                        ? 'Neuer Bestwert'
+                        : 'Bestwert ${r.stats.bestScore}',
+                    style: TextStyle(
+                      color: r.newBest ? _coral : _muted,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _Stat('HÖHE', '${r.height}'),
+                      _Stat('STEINE', '${r.pieces}'),
+                      _Stat('COMBO', '${r.bestCombo}'),
+                      _Stat('Ø PUNKTE', '${r.stats.averageScore}'),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 60,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _mint,
+                        shape: const StadiumBorder(),
+                      ),
+                      onPressed: onRestart,
+                      child: const Text(
+                        'NOCHMAL',
+                        style: TextStyle(
+                          fontSize: 17,
+                          letterSpacing: 2,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ),
-                const SizedBox(height: 10),
-                Text(
-                  'Höhe ${h.height}   ·   Bestwert ${h.best}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: _navy,
-                  ),
-                ),
-                const SizedBox(height: 22),
-                SizedBox(
-                  width: double.infinity,
-                  height: 58,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _mint,
-                      shape: const StadiumBorder(),
-                    ),
-                    onPressed: onRestart,
-                    child: const Text(
-                      'NOCHMAL',
-                      style: TextStyle(
-                        fontSize: 17,
-                        letterSpacing: 2,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat(this.label, this.value);
+  final String label, value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: _navy,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(label, style: _label),
+      ],
     );
   }
 }

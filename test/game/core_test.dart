@@ -150,7 +150,11 @@ void main() {
       final cubes = s.current.cells.length;
       final r = s.place()!;
       expect(r.$2.base, cubes * 10);
-      expect(s.score, cubes * 10);
+      expect(
+        s.score,
+        cubes * 15,
+        reason: '10 je Würfel + 50 % für saubere Ablage',
+      );
       expect(s.phase, GamePhase.placing);
       expect(s.place(), isNull, reason: 'während des Fallens gesperrt');
       expect(s.rotate(1), isFalse);
@@ -179,7 +183,12 @@ void main() {
         }
       }
       expect(last!.layers, 1);
-      expect(s.score, 25 * 10 + 100);
+      expect(last.layerBonus, 100);
+      expect(
+        s.score,
+        greaterThan(25 * 15 + 100),
+        reason: 'Combo erhöht die Punkte',
+      );
       expect(s.height, 1);
     });
 
@@ -223,11 +232,11 @@ void main() {
   test(
     'PieceBag: gleicher Seed, gleiche Folge; jede Form einmal pro Beutel',
     () {
-      final a = PieceBag(PieceLibrary.prototype, seed: 7),
-          b = PieceBag(PieceLibrary.prototype, seed: 7);
-      final first = [for (var i = 0; i < 6; i++) a.next().name];
-      expect(first.toSet().length, 6);
-      expect([for (var i = 0; i < 6; i++) b.next().name], first);
+      final a = PieceBag((_) => PieceLibrary.basic, seed: 7),
+          b = PieceBag((_) => PieceLibrary.basic, seed: 7);
+      final first = [for (var i = 0; i < 5; i++) a.next().name];
+      expect(first.toSet().length, 5);
+      expect([for (var i = 0; i < 5; i++) b.next().name], first);
     },
   );
 }

@@ -14,7 +14,7 @@ class PieceShape {
   int get height => cells.fold(0, (m, c) => c.$3 > m ? c.$3 : m) + 1;
 }
 
-/// Bausteine des Prototyps (Farben: 0 mint, 1 coral, 2 amber, 3 cream).
+/// Alle Bausteine (Farben: 0 mint, 1 coral, 2 amber, 3 cream).
 abstract final class PieceLibrary {
   static const single = PieceShape('single', [(0, 0, 0)], 3);
   static const domino = PieceShape('domino', [(0, 0, 0), (1, 0, 0)], 2);
@@ -37,5 +37,58 @@ abstract final class PieceLibrary {
     (1, 1, 0),
   ], 0);
 
-  static const prototype = [single, domino, bar3, corner, square, tee];
+  /// Stehender Doppelblock (zwei Würfel hoch).
+  static const pillar = PieceShape('pillar', [(0, 0, 0), (0, 0, 1)], 3);
+  static const bar4 = PieceShape('bar4', [
+    (0, 0, 0),
+    (1, 0, 0),
+    (2, 0, 0),
+    (3, 0, 0),
+  ], 1);
+  static const ell = PieceShape('ell', [
+    (0, 0, 0),
+    (1, 0, 0),
+    (2, 0, 0),
+    (0, 1, 0),
+  ], 2);
+  static const jay = PieceShape('jay', [
+    (0, 0, 0),
+    (1, 0, 0),
+    (2, 0, 0),
+    (2, 1, 0),
+  ], 1);
+  static const ess = PieceShape('ess', [
+    (0, 0, 0),
+    (1, 0, 0),
+    (1, 1, 0),
+    (2, 1, 0),
+  ], 0);
+  static const zed = PieceShape('zed', [
+    (1, 0, 0),
+    (2, 0, 0),
+    (0, 1, 0),
+    (1, 1, 0),
+  ], 3);
+
+  /// Stufe: liegender Doppelblock mit aufgesetztem Würfel.
+  static const step = PieceShape('step', [(0, 0, 0), (1, 0, 0), (1, 0, 1)], 1);
+
+  static const basic = [single, domino, bar3, corner, square];
+  static const tier2 = [tee, pillar];
+  static const tier3 = [bar4, ell, jay];
+  static const tier4 = [ess, zed, step];
+  static const all = [...basic, ...tier2, ...tier3, ...tier4];
+
+  /// Schwellen (Anzahl bereits gezogener Bausteine), ab denen neue Formen dazukommen.
+  static const tierStarts = [0, 10, 22, 36];
+
+  /// Formen eines Beutels abhängig vom Fortschritt. Die Schwierigkeit steigt
+  /// über die Formenmischung, nicht über Zeitdruck. In der letzten Stufe ist
+  /// der Einzelwürfel als Lückenfüller doppelt im Beutel.
+  static List<PieceShape> forProgress(int drawn) => [
+    ...basic,
+    if (drawn >= tierStarts[1]) ...tier2,
+    if (drawn >= tierStarts[2]) ...tier3,
+    if (drawn >= tierStarts[3]) ...[...tier4, single],
+  ];
 }

@@ -74,3 +74,30 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Kein Ton, kein Tutorial, kein Hauptmenü (Phase 4)
 
 **Nächster Schritt:** Spieltest durch den Nutzer, danach Phase 2.
+
+## 19.11.2026 – Phase 2: Kernspiel
+
+**Umgesetzt:**
+- 13 Bausteinformen in vier Stufen, darunter zwei mit Höhe (stehender Doppelblock, Stufe)
+- Punktesystem: saubere Ablage, Combo-Multiplikator, volle Ebene, Höhenmeilenstein; jeder Posten wird eingeblendet
+- Statistik (Bestwert, Höhe, Runden, Durchschnitt, beste Combo, Bausteine) dauerhaft lokal gespeichert
+- Vorwarnung bei weniger als 4 gültigen Ablagen
+- Spielgefühl: Staub beim Aufprall, Bausteine darunter federn leicht mit, am Spielende fährt die Kamera zurück und zeigt den ganzen Turm, Ergebnis mit Statistik darunter
+- Plattform-Drehbilder in halber Auflösung (Sprites auf der Platte 7 MB statt 16 MB)
+
+**Geprüft:**
+- 34 Unit-Tests bestanden, `flutter analyze` ohne Befund
+- Bot-Simulation mit allen Formen: Planer im Median 57 Steine
+- Autoplay-Lauf im iOS-Simulator bis zum Spielende (49 Steine, Höhe 8, 3135 Punkte), Ergebnisbildschirm geprüft
+- Bestwert nach Beenden und Neustart der App weiterhin vorhanden
+
+**Im Lauf gefunden und behoben:**
+- Punkte-Einblendungen überlappten sich
+- Combo erreichte nach wenigen Zügen das Maximum; Kurve abgeflacht (0,1 je Ablage, höchstens ×2,0)
+
+**Nicht geprüft / offen:**
+- Echte Geräte und Android; Vibration; Speicherverbrauch auf dem Gerät
+- Die Formen S/Z/Stufe erscheinen erst ab Baustein 37 und waren im Simulatorlauf kaum zu sehen
+- Pause-Knopf und Wiederaufnahme einer Runde nach App-Neustart (Phase 4)
+- Schatten auf Seitenflächen (Phase 3)
+- Bei hohen Türmen liegt der Sockel während des Spiels hinter den Knöpfen

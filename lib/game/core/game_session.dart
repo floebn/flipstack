@@ -9,17 +9,47 @@ enum GameOverReason { noPlacement, summit }
 
 /// Punkte einer Ablage, aufgeschlüsselt (transparent für die Anzeige).
 class PlacementScore {
-  const PlacementScore(this.base, this.layerBonus, this.layers);
-  final int base, layerBonus, layers;
-  int get total => base + layerBonus;
+  const PlacementScore({
+    required this.base,
+    required this.cleanBonus,
+    required this.multiplier,
+    required this.combo,
+    required this.layers,
+    required this.layerBonus,
+    required this.milestones,
+    required this.milestoneBonus,
+  });
+
+  /// 10 Punkte je Würfel.
+  final int base;
+
+  /// +50 %, wenn der Baustein vollständig aufliegt.
+  final int cleanBonus;
+
+  /// Combo-Multiplikator auf [base] + [cleanBonus].
+  final double multiplier;
+
+  /// Anzahl sauberer Ablagen in Folge (0 = Serie beendet).
+  final int combo;
+  final int layers, layerBonus;
+  final int milestones, milestoneBonus;
+
+  bool get clean => cleanBonus > 0;
+  int get placement => ((base + cleanBonus) * multiplier).round();
+  int get total => placement + layerBonus + milestoneBonus;
 }
 
 /// Eine Spielrunde: reiner Zustand und Regeln, ohne Darstellung und ohne Zeit.
 /// Animationen meldet die Darstellung über [finishPlacing]/[finishRotating].
 class GameSession {
+  /// [shapes] legt einen festen Vorrat fest (für Tests); sonst wächst der
+  /// Vorrat mit dem Fortschritt, siehe [PieceLibrary.forProgress].
   GameSession({Rules? rules, int? seed, List<PieceShape>? shapes})
     : rules = rules ?? const Rules(),
-      _bag = PieceBag(shapes ?? PieceLibrary.prototype, seed: seed) {
+      _bag = PieceBag(
+        shapes == null ? PieceLibrary.forProgress : (_) => shapes,
+        seed: seed,
+      ) {
     board = Board(this.rules.config.grid);
     current = _bag.next();
     next = _bag.next();
@@ -28,6 +58,15 @@ class GameSession {
 
   static const pointsPerCube = 10;
   static const pointsPerLayer = 100;
+  static const pointsPerMilestone = 200;
+  static const milestoneEvery = 5;
+  static const comboStep = 0.1;
+  static const maxMultiplier = 2.0;
+
+  /// Multiplikator für die n-te saubere Ablage in Folge.
+  static double multiplierFor(int combo) => combo <= 1
+      ? 1.0
+      : (1 + comboStep * (combo - 1)).clamp(1.0, maxMultiplier);
 
   final Rules rules;
   final PieceBag _bag;
@@ -47,8 +86,16 @@ class GameSession {
   int score = 0;
   int piecesPlaced = 0;
   int rotations = 0;
+
+  /// Saubere Ablagen in Folge.
+  int combo = 0;
+  int bestCombo = 0;
+  int _milestones = 0;
   int _fullLayers = 0;
   int _nextPieceId = 1;
+
+  /// Anzahl gültiger Ablagen (Position x Orientierung) für den aktuellen Baustein.
+  int placementsLeft = 1 << 20;
 
   int get height => board.maxHeight;
   int get grid => board.n;
@@ -95,10 +142,22 @@ class GameSession {
       _fullLayers++;
       layers++;
     }
+    final clean = p.isFullySupported;
+    combo = clean ? combo + 1 : 0;
+    if (combo > bestCombo) bestCombo = combo;
+    final reached = board.maxHeight ~/ milestoneEvery;
+    final milestones = reached > _milestones ? reached - _milestones : 0;
+    _milestones += milestones;
+    final base = p.cells.length * pointsPerCube;
     final s = PlacementScore(
-      p.cells.length * pointsPerCube,
-      layers * pointsPerLayer,
-      layers,
+      base: base,
+      cleanBonus: clean ? base ~/ 2 : 0,
+      multiplier: multiplierFor(combo),
+      combo: combo,
+      layers: layers,
+      layerBonus: layers * pointsPerLayer,
+      milestones: milestones,
+      milestoneBonus: milestones * pointsPerMilestone,
     );
     score += s.total;
     piecesPlaced++;
@@ -116,7 +175,8 @@ class GameSession {
     current = next;
     next = _bag.next();
     _centerPiece();
-    if (!rules.hasAnyValidPlacement(board, current)) {
+    placementsLeft = rules.validPlacements(board, current).length;
+    if (placementsLeft == 0) {
       _end(GameOverReason.noPlacement);
     } else {
       phase = GamePhase.preview;

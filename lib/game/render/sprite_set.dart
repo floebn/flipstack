@@ -22,7 +22,13 @@ class SpriteSet {
   /// Abgedunkelte Würfelfarben für die Fugen zwischen Würfeln.
   late final List<Color> cubeShade;
   late final Image marker;
+
+  /// Plattform im Ruhezustand (volle Auflösung).
+  late final Image platformStill;
+
+  /// Plattform während der Drehung (um [platformFrameScale] verkleinert).
   late final List<Image> platform;
+  late final double platformFrameScale;
 
   static Future<SpriteSet> load() async {
     final images = Images(prefix: 'assets/sprites/');
@@ -55,6 +61,8 @@ class SpriteSet {
     ];
     s.cubes = [for (final c in colors) await images.load('cube_$c.png')];
     s.marker = await images.load('tile_marker.png');
+    s.platformFrameScale = (meta['platform']['frameScale'] as num).toDouble();
+    s.platformStill = await images.load('platform_still.png');
     s.platform = [
       for (var i = 0; i < s.frames; i++)
         await images.load('platform_${i.toString().padLeft(3, '0')}.png'),

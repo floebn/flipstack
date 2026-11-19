@@ -8,11 +8,31 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart' show TextStyle, FontWeight;
 import 'package:flutter/services.dart' show HapticFeedback;
 
+import '../services/storage/stats_store.dart';
 import 'core/game_session.dart';
+import 'core/player_stats.dart';
 import 'core/rules.dart';
 import 'projection/iso_projection.dart';
 import 'render/sprite_set.dart';
 import 'render/tower_renderer.dart';
+
+/// Ergebnis einer beendeten Runde für den Ergebnisbildschirm.
+@immutable
+class RoundResult {
+  const RoundResult({
+    required this.reason,
+    required this.score,
+    required this.height,
+    required this.pieces,
+    required this.bestCombo,
+    required this.newBest,
+    required this.stats,
+  });
+  final GameOverReason reason;
+  final int score, height, pieces, bestCombo;
+  final bool newBest;
+  final PlayerStats stats;
+}
 
 /// Was die Flutter-Oberfläche anzeigen muss.
 @immutable
@@ -21,33 +41,61 @@ class HudState {
     this.score = 0,
     this.height = 0,
     this.best = 0,
+    this.combo = 0,
+    this.multiplier = 1,
     this.canDrop = true,
-    this.gameOver,
-    this.newBest = false,
     this.hint,
+    this.warning,
+    this.result,
   });
-  final int score, height, best;
+  final int score, height, best, combo;
+  final double multiplier;
   final bool canDrop;
-  final GameOverReason? gameOver;
-  final bool newBest;
+
+  /// Warum die aktuelle Position ungültig ist.
   final String? hint;
+
+  /// Vorwarnung, wenn nur noch wenige Ablagen möglich sind.
+  final String? warning;
+  final RoundResult? result;
 }
 
 class _Popup {
-  _Popup(this.text, this.wx, this.wy, this.z);
+  _Popup(
+    this.text,
+    this.wx,
+    this.wy,
+    this.z,
+    this.delay, {
+    this.accent = false,
+  });
   final String text;
-  final double wx, wy, z;
+  final double wx, wy, z, delay;
+  final bool accent;
   double t = 0;
 }
 
-/// Verbindet Spiellogik, Animationen und Darstellung (Phase 1b: Prototyp).
-class FlipstackGame extends FlameGame {
-  FlipstackGame({this.showFps = false, this.seed, this.autoplay = false});
+class _Dust {
+  _Dust(this.wx, this.wy, this.z, this.vx, this.vy, this.size);
+  double wx, wy;
+  final double z, vx, vy, size;
+  double t = 0;
+}
 
+/// Verbindet Spiellogik, Animationen und Darstellung.
+class FlipstackGame extends FlameGame {
+  FlipstackGame({
+    StatsStore? store,
+    this.showFps = false,
+    this.seed,
+    this.autoplay = false,
+  }) : store = store ?? MemoryStatsStore();
+
+  final StatsStore store;
   final bool showFps;
   final int? seed;
 
-  /// Testhilfe: spielt zufällige gültige Züge.
+  /// Testhilfe: spielt selbstständig gültige Züge.
   final bool autoplay;
   double _autoT = 0;
   (int, int, int)? _autoTarget;
@@ -55,6 +103,8 @@ class FlipstackGame extends FlameGame {
 
   static const rotationSeconds = 0.30;
   static const squashSeconds = 0.32;
+  static const gameOverSeconds = 1.2;
+  static const warnBelow = 4;
 
   final ValueNotifier<HudState> hud = ValueNotifier(const HudState());
 
@@ -64,7 +114,8 @@ class FlipstackGame extends FlameGame {
   late final TowerRenderer _renderer;
   final IsoProjection _projection = IsoProjection(origin: Offset.zero, unit: 1);
   late GameSession _session;
-  int _best = 0;
+  PlayerStats _stats = const PlayerStats();
+  RoundResult? _result;
   bool _ready = false;
 
   // Rotation
@@ -83,9 +134,15 @@ class FlipstackGame extends FlameGame {
   double _fallFrom = 0, _fallT = 0, _fallDur = 0.2;
   int _squashId = -1;
   double _squashT = 1;
+  Set<int> _nudgeIds = const {};
+  PlacementScore? _pendingScore;
+  List<(int, int, int)> _landedCells = const [];
 
   double _cam = 0;
+  double _overT = 0;
   final List<_Popup> _popups = [];
+  final List<_Dust> _dust = [];
+  final _rng = math.Random();
   final _popupPaint = TextPaint(
     style: const TextStyle(
       fontSize: 22,
@@ -93,6 +150,14 @@ class FlipstackGame extends FlameGame {
       color: Color(0xFF202B38),
     ),
   );
+  final _popupAccent = TextPaint(
+    style: const TextStyle(
+      fontSize: 19,
+      fontWeight: FontWeight.w800,
+      color: Color(0xFFD9573F),
+    ),
+  );
+  final _dustPaint = Paint();
 
   double get _thetaDeg {
     final target = _session.orientation * 90.0;
@@ -107,9 +172,10 @@ class FlipstackGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     _renderer = TowerRenderer(await SpriteSet.load());
+    _stats = await store.load();
     if (showFps) {
       add(
-        FpsTextComponent(position: Vector2(12, 120), scale: Vector2.all(0.5)),
+        FpsTextComponent(position: Vector2(12, 130), scale: Vector2.all(0.5)),
       );
     }
     restart();
@@ -120,11 +186,16 @@ class FlipstackGame extends FlameGame {
 
   void restart() {
     _session = GameSession(seed: seed);
+    _result = null;
     _fromDeg = 0;
     _rotT = 1;
     _queuedRotation = null;
     _fallId = _squashId = -1;
+    _nudgeIds = const {};
+    _autoTarget = null;
+    _overT = 0;
     _popups.clear();
+    _dust.clear();
     _snapHover();
     _spawnT = 0;
     _publish();
@@ -180,25 +251,8 @@ class FlipstackGame extends FlameGame {
     _fallFrom = hover - p.z0;
     _fallT = 0;
     _fallDur = (0.11 * math.sqrt(_fallFrom)).clamp(0.14, 0.42);
-    // Punkte über dem Baustein einblenden
-    var cx = 0.0, cy = 0.0, top = 0;
-    for (final (x, y, z) in p.cells) {
-      cx += x;
-      cy += y;
-      top = math.max(top, z);
-    }
-    final h = (_session.grid - 1) / 2;
-    final label = s.layers > 0
-        ? '+${s.base}  Ebene +${s.layerBonus}'
-        : '+${s.base}';
-    _popups.add(
-      _Popup(
-        label,
-        cx / p.cells.length - h,
-        cy / p.cells.length - h,
-        top + 1.6,
-      ),
-    );
+    _pendingScore = s;
+    _landedCells = p.cells;
     _publish();
   }
 
@@ -222,25 +276,16 @@ class FlipstackGame extends FlameGame {
 
     if (_fallId >= 0) {
       _fallT += dt / _fallDur;
-      if (_fallT >= 1) {
-        _squashId = _fallId;
-        _squashT = 0;
-        _fallId = -1;
-        HapticFeedback.mediumImpact();
-        s.finishPlacing();
-        if (s.phase == GamePhase.gameOver) {
-          if (s.score > _best) _best = s.score;
-        } else {
-          _snapHover();
-          _spawnT = 0;
-        }
-        _publish();
-        _runQueuedRotation();
-      }
+      if (_fallT >= 1) _land();
     }
     if (_squashT < 1) _squashT = math.min(1, _squashT + dt / squashSeconds);
     if (_spawnT < 1) _spawnT = math.min(1, _spawnT + dt / 0.2);
     if (_shakeT < 1) _shakeT = math.min(1, _shakeT + dt / 0.3);
+
+    if (s.phase == GamePhase.gameOver && _overT < 1) {
+      _overT = math.min(1, _overT + dt / gameOverSeconds);
+      if (_overT >= 1) _publish();
+    }
 
     final k = 1 - math.exp(-dt * 26);
     _hx += (s.wx - _hx) * k;
@@ -251,10 +296,104 @@ class FlipstackGame extends FlameGame {
     if (autoplay) _autoplayStep(dt);
 
     for (final p in _popups) {
-      p.t += dt / 0.9;
+      p.t += dt / 1.0;
     }
-    _popups.removeWhere((p) => p.t >= 1);
+    _popups.removeWhere((p) => p.t >= 1 + p.delay);
+    for (final d in _dust) {
+      d.t += dt / 0.45;
+      d.wx += d.vx * dt * (1 - d.t).clamp(0, 1);
+      d.wy += d.vy * dt * (1 - d.t).clamp(0, 1);
+    }
+    _dust.removeWhere((d) => d.t >= 1);
   }
+
+  /// Der fallende Baustein ist angekommen.
+  void _land() {
+    final s = _session;
+    final id = _fallId;
+    _squashId = id;
+    _squashT = 0;
+    _fallId = -1;
+    HapticFeedback.mediumImpact();
+
+    // Bausteine direkt darunter federn leicht mit (rein optisch, kehren exakt zurück)
+    final below = {for (final (x, y, z) in _landedCells) (x, y, z - 1)};
+    _nudgeIds = {
+      for (final c in s.board.cells)
+        if (c.pieceId != id && below.contains((c.x, c.y, c.z))) c.pieceId,
+    };
+
+    _spawnEffects(_pendingScore!);
+    s.finishPlacing();
+    if (s.phase == GamePhase.gameOver) {
+      final newBest = s.score > _stats.bestScore && s.score > 0;
+      _stats = _stats.recordRound(s);
+      store.save(_stats);
+      _result = RoundResult(
+        reason: s.gameOverReason!,
+        score: s.score,
+        height: s.height,
+        pieces: s.piecesPlaced,
+        bestCombo: s.bestCombo,
+        newBest: newBest,
+        stats: _stats,
+      );
+      _overT = 0;
+      HapticFeedback.heavyImpact();
+    } else {
+      _snapHover();
+      _spawnT = 0;
+    }
+    _publish();
+    _runQueuedRotation();
+  }
+
+  void _spawnEffects(PlacementScore sc) {
+    final half = (_session.grid - 1) / 2;
+    var cx = 0.0, cy = 0.0, top = 0, bottom = 1 << 20;
+    for (final (x, y, z) in _landedCells) {
+      cx += x;
+      cy += y;
+      top = math.max(top, z);
+      bottom = math.min(bottom, z);
+    }
+    cx = cx / _landedCells.length - half;
+    cy = cy / _landedCells.length - half;
+
+    final mult = sc.multiplier > 1 ? '  ×${_fmt(sc.multiplier)}' : '';
+    var delay = 0.0;
+    void pop(String text, {bool accent = false}) {
+      _popups.add(_Popup(text, cx, cy, top + 1.7, delay, accent: accent));
+      delay += 0.16;
+    }
+
+    pop('+${sc.placement}$mult');
+    if (sc.layers > 0) pop('Ebene voll  +${sc.layerBonus}', accent: true);
+    if (sc.milestones > 0) {
+      pop('Höhe ${_session.height}  +${sc.milestoneBonus}', accent: true);
+    }
+
+    // Staub am Fuss des Bausteins
+    for (final (x, y, z) in _landedCells) {
+      if (z != bottom) continue;
+      for (var i = 0; i < 3; i++) {
+        final a = _rng.nextDouble() * math.pi * 2;
+        final v = 1.2 + _rng.nextDouble() * 1.4;
+        _dust.add(
+          _Dust(
+            x - half + math.cos(a) * 0.45,
+            y - half + math.sin(a) * 0.45,
+            z + 0.06,
+            math.cos(a) * v,
+            math.sin(a) * v,
+            0.05 + _rng.nextDouble() * 0.06,
+          ),
+        );
+      }
+    }
+  }
+
+  static String _fmt(double m) => m.toStringAsFixed(1).replaceAll('.', ',');
 
   void _autoplayStep(double dt) {
     final s = _session;
@@ -264,15 +403,12 @@ class FlipstackGame extends FlameGame {
     _autoT = 0;
     if (_autoTarget == null) {
       final o = s.rules.validPlacements(s.board, s.current);
-      // bevorzugt tiefe, voll gestützte Positionen
-      o.sort((a, b) {
-        int cost((int, int, int) c) {
-          final p = s.rules.evaluate(s.board, s.current, c.$1, c.$2, c.$3);
-          return p.z0 * 10 + (p.columns - p.supported) * 25;
-        }
+      int cost((int, int, int) c) {
+        final p = s.rules.evaluate(s.board, s.current, c.$1, c.$2, c.$3);
+        return p.z0 * 10 + (p.columns - p.supported) * 25;
+      }
 
-        return cost(a).compareTo(cost(b));
-      });
+      o.sort((a, b) => cost(a).compareTo(cost(b)));
       _autoTarget = o[_autoRng.nextInt(math.min(3, o.length))];
     }
     final (x, y, r) = _autoTarget!;
@@ -300,22 +436,28 @@ class FlipstackGame extends FlameGame {
 
   void _publish() {
     final s = _session;
+    final preview = s.phase == GamePhase.preview;
     final p = s.placement;
-    final over = s.phase == GamePhase.gameOver;
     hud.value = HudState(
       score: s.score,
       height: s.height,
-      best: _best,
-      canDrop: s.phase == GamePhase.preview && p.isValid,
-      gameOver: over ? s.gameOverReason : null,
-      newBest: over && s.score > 0 && s.score >= _best,
-      hint: s.phase != GamePhase.preview || p.isValid
+      best: math.max(_stats.bestScore, s.score),
+      combo: s.combo,
+      multiplier: GameSession.multiplierFor(s.combo + 1),
+      canDrop: preview && p.isValid,
+      hint: !preview || p.isValid
           ? null
           : switch (p.error) {
               PlacementError.unsupported => 'Liegt zu wenig auf',
               PlacementError.tooUneven => 'Turm wird zu ungleichmäßig',
               _ => null,
             },
+      warning: preview && s.placementsLeft < warnBelow
+          ? (s.placementsLeft == 1
+                ? 'Nur noch 1 Platz'
+                : 'Nur noch ${s.placementsLeft} Plätze')
+          : null,
+      result: _overT >= 1 ? _result : null,
     );
   }
 
@@ -327,12 +469,22 @@ class FlipstackGame extends FlameGame {
     final s = _session;
     final n = s.grid;
     final half = (n - 1) / 2;
-    _projection
-      ..unit = size.x / 8.2
-      ..origin = Offset(
-        size.x / 2,
-        size.y * 0.60 + _cam * _projection.unitHeight,
-      );
+
+    // Kamera: im Spiel folgt sie der Bauhöhe; am Ende zeigt sie den ganzen Turm.
+    final playUnit = size.x / 8.2;
+    final over = Curves.easeInOutCubic.transform(_overT);
+    _projection.unit = playUnit;
+    final playY = size.y * 0.60 + _cam * _projection.unitHeight;
+    if (over > 0) {
+      final needed =
+          s.height * 0.8165 + 5.2; // Turmhöhe + Plattformtiefe (Welteinheiten)
+      final fitUnit = math.min(playUnit, size.y * 0.50 / needed);
+      _projection.unit = playUnit + (fitUnit - playUnit) * over;
+      final fitY = size.y * 0.10 + (s.height * 0.8165 + 2.2) * fitUnit;
+      _projection.origin = Offset(size.x / 2, playY + (fitY - playY) * over);
+    } else {
+      _projection.origin = Offset(size.x / 2, playY);
+    }
 
     final thetaDeg = _thetaDeg;
     final theta = thetaDeg * math.pi / 180;
@@ -348,9 +500,9 @@ class FlipstackGame extends FlameGame {
     }
 
     final fall = _fallId >= 0 ? _fallFrom * (1 - _fallT * _fallT) : 0.0;
-    final squash = _squashT < 1
-        ? 1 - 0.13 * math.exp(-5.5 * _squashT) * math.cos(_squashT * 15)
-        : 1.0;
+    final wobble = _squashT < 1
+        ? math.exp(-5.5 * _squashT) * math.cos(_squashT * 15)
+        : 0.0;
     for (final c in s.board.cells) {
       final (wx, wy) = IsoProjection.rotate(c.x - half, c.y - half, theta);
       final falling = c.pieceId == _fallId;
@@ -361,7 +513,11 @@ class FlipstackGame extends FlameGame {
           z: c.z + 0.5 + (falling ? fall : 0),
           color: c.color,
           frame: frame,
-          squash: c.pieceId == _squashId ? squash : 1,
+          squash: c.pieceId == _squashId
+              ? 1 - 0.13 * wobble
+              : _nudgeIds.contains(c.pieceId)
+              ? 1 - 0.035 * wobble
+              : 1,
           shadowTop: !falling && heights[c.y * n + c.x] == c.z + 1
               ? (c.x, c.y, c.z + 1)
               : null,
@@ -418,12 +574,21 @@ class FlipstackGame extends FlameGame {
       markerCell: (0, 0),
     );
 
+    for (final d in _dust) {
+      final (wx, wy) = IsoProjection.rotate(d.wx, d.wy, theta);
+      final o = _projection.projectWorld(wx, wy, d.z + d.t * 0.25);
+      _dustPaint.color = Color.fromRGBO(255, 250, 240, 0.75 * (1 - d.t));
+      canvas.drawCircle(o, d.size * _projection.unit * (0.6 + d.t), _dustPaint);
+    }
+
     for (final p in _popups) {
+      final t = p.t - p.delay;
+      if (t < 0) continue;
       final (wx, wy) = IsoProjection.rotate(p.wx, p.wy, theta);
-      final o = _projection.projectWorld(wx, wy, p.z + p.t * 0.9);
-      final a = (1 - p.t * p.t).clamp(0.0, 1.0);
+      final o = _projection.projectWorld(wx, wy, p.z + t * 0.9 + p.delay * 4.4);
+      final a = (1 - t * t).clamp(0.0, 1.0);
       canvas.saveLayer(null, Paint()..color = Color.fromRGBO(0, 0, 0, a));
-      _popupPaint.render(
+      (p.accent ? _popupAccent : _popupPaint).render(
         canvas,
         p.text,
         Vector2(o.dx, o.dy),
@@ -437,8 +602,8 @@ class FlipstackGame extends FlameGame {
       _renderer.renderPiece(
         canvas,
         s.next,
-        Offset(size.x - 58, safeTop + 64),
-        17,
+        Offset(size.x - 58, safeTop + 66),
+        15,
       );
     }
     super.render(canvas);

@@ -62,15 +62,7 @@ void run(String label, RuleConfig cfg, Pick bot, {int games = 300}) {
 }
 
 void main() {
-  for (final (support, spread) in [
-    (0.5, 4),
-    (0.5, 3),
-    (0.5, 2),
-    (1.0, 4),
-    (1.0, 3),
-    (1.0, 2),
-    (0.75, 3),
-  ]) {
+  for (final (support, spread) in [(0.5, 4), (0.5, 5), (0.5, 3)]) {
     final cfg = RuleConfig(minSupport: support, maxSpread: spread);
     run('Zufall  support=$support spread=$spread', cfg, randomBot);
     run('Gierig  support=$support spread=$spread', cfg, greedyBot);
