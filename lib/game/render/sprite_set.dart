@@ -20,7 +20,13 @@ class SpriteSet {
   late final double cubeSize;
   late final Size tileSize;
   late final double tileCenterZ;
-  late final double platformTargetZ;
+  late double platformTargetZ;
+  late final double _defaultTargetZ;
+
+  /// Bildmitte je freischaltbarer Plattform (assets/sprites/platforms.json).
+  late final Map<String, double> _platformTargetZ;
+  String? _platformSet;
+  int _platformRequest = 0;
   late final List<double> sunDir;
 
   /// Grauer Würfel, Atlas über die Drehwinkel. Wechselt mit dem Material.
@@ -69,10 +75,10 @@ class SpriteSet {
   late final double pegOffset;
 
   /// Plattform im Ruhezustand (volle Auflösung).
-  late final Image platformStill;
+  late Image platformStill;
 
   /// Plattform während der Drehung (um [platformFrameScale] verkleinert).
-  late final List<Image> platform;
+  late List<Image> platform;
   late final double platformFrameScale;
 
   late List<Color> palette;
@@ -107,6 +113,13 @@ class SpriteSet {
       ..platformFrameScale = d(meta['platform']['frameScale'])
       ..sunDir = [for (final v in meta['sunDir'] as List) d(v)];
     s.setPalette(palette);
+    s._defaultTargetZ = s.platformTargetZ;
+    final sets = jsonDecode(
+      await rootBundle.loadString('assets/sprites/platforms.json'),
+    ) as Map<String, dynamic>;
+    s._platformTargetZ = {
+      for (final e in sets.entries) e.key: d((e.value as Map)['targetZ']),
+    };
     s.invalidTint = s.tintFor(const Color(0xFFE5484D));
     s.cube = await images.load('cube.png');
     s.marker = await images.load('tile_marker.png');
@@ -117,6 +130,36 @@ class SpriteSet {
         await images.load('platform_${i.toString().padLeft(3, '0')}.png'),
     ];
     return s;
+  }
+
+  static String _frameFile(String? set, int i) =>
+      'platform_${set == null ? '' : '${set}_'}${i.toString().padLeft(3, '0')}.png';
+
+  static String _stillFile(String? set) =>
+      'platform_${set == null ? '' : '${set}_'}still.png';
+
+  /// Wechselt den Sprite-Satz der Plattform ([set] = `null` für die
+  /// Standardplattform). Geladen ist immer nur ein Satz; der vorherige wird
+  /// freigegeben.
+  Future<void> setPlatform(String? set) async {
+    if (set == _platformSet) return;
+    final request = ++_platformRequest;
+    final still = await _images.load(_stillFile(set));
+    final rotating = [
+      for (var i = 0; i < frames; i++) await _images.load(_frameFile(set, i)),
+    ];
+    if (request != _platformRequest) return; // inzwischen neu gewählt
+    final old = _platformSet;
+    platformStill = still;
+    platform = rotating;
+    platformTargetZ = set == null
+        ? _defaultTargetZ
+        : _platformTargetZ[set] ?? _defaultTargetZ;
+    _platformSet = set;
+    _images.clear(_stillFile(old));
+    for (var i = 0; i < frames; i++) {
+      _images.clear(_frameFile(old, i));
+    }
   }
 
   /// Wechselt die Blockfarben (kosmetische Freischaltung).

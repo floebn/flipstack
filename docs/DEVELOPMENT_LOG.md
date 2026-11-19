@@ -246,3 +246,12 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Auf Wunsch: Klemmbaustein mit runder Noppe oben, teuerstes Stück (1800). Eigene, generische Form ohne Marke oder Schriftzug.
 - Die Noppe bleibt innerhalb der Würfel-Silhouette, der Würfel darüber verdeckt sie. Fugenfüllung wie beim Standardwürfel.
 - Geprüft im Simulator: ein Spielstand bis Höhe 2. Nicht geprüft: Drehung, hohe Türme, Gerät.
+
+## Paket 3: Plattformen (19.11.2026)
+
+- Vier neue Plattformen mit eigener Form: Eiche, Marmor, Gletscher, Insel. Der Shop zeigt alle Plattformen als Rendering.
+- Sprite-Sätze werden beim Wechsel geladen und der vorherige freigegeben; die Bildmitte je Plattform steht in `assets/sprites/platforms.json`.
+- Abweichung vom Vorschlag: Gletscher und Insel laufen nicht spitz zu. Eine Spitze ist aus der Spielkamera nicht zu sehen (erste Fassung: Unterseite komplett verdeckt), deshalb gestufte Stümpfe.
+- Größe: `assets/sprites` wächst von 9 auf 32 MB.
+- Geprüft im iOS-Simulator: alle vier im Spiel bei ruhender Plattform mit Würfeln, Karten im Shop, Anprobe der Insel. 70 Tests, Analyse ohne Befund.
+- Nicht geprüft: Drehung im Bewegtbild, Ladezeit und Speicher auf dem Gerät, Lesbarkeit von Schatten und markierten Feldern auf den hellen Plattformen (Marmor, Gletscher) bei hohem Turm, Insel und Gletscher hinter den Bedienknöpfen bei Rundenbeginn.

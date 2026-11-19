@@ -563,22 +563,11 @@ class _Preview extends StatelessWidget {
       case CosmeticCategory.platform:
         return ColoredBox(
           color: const Color(0x0F202B38),
-          child: Center(
-            child: Container(
-              width: 92,
-              height: 30,
-              decoration: BoxDecoration(
-                color: Looks.platformSwatches[item.id],
-                borderRadius: BorderRadius.circular(6),
-              ),
-              alignment: Alignment.topCenter,
-              child: Container(
-                height: 10,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEDE6D8),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
-                ),
-              ),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Image.asset(
+              Looks.platformPreview(item.id),
+              filterQuality: FilterQuality.medium,
             ),
           ),
         );

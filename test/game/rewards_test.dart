@@ -208,7 +208,22 @@ void main() {
         expect(Looks.backgrounds.containsKey(c.id), isTrue, reason: c.id);
       }
       for (final c in Cosmetics.of(CosmeticCategory.platform)) {
-        expect(Looks.platformSwatches.containsKey(c.id), isTrue, reason: c.id);
+        expect(
+          File(Looks.platformPreview(c.id)).existsSync(),
+          isTrue,
+          reason: c.id,
+        );
+        final set = Looks.platformSets[c.id];
+        if (set != null) {
+          expect(
+            File('assets/sprites/platform_${set}_still.png').existsSync(),
+            isTrue,
+          );
+          expect(
+            File('assets/sprites/platform_${set}_029.png').existsSync(),
+            isTrue,
+          );
+        }
       }
     });
 

@@ -361,6 +361,9 @@ class FlipstackGame extends FlameGame {
     );
     final bg = Looks.background(look(CosmeticCategory.background));
     if (!identical(bg, _background.theme)) _background.theme = bg;
+    _renderer.sprites.setPlatform(
+      Looks.platformSets[look(CosmeticCategory.platform)],
+    );
     _renderer.platformFilter = Looks.platformFilter(
       look(CosmeticCategory.platform),
     );

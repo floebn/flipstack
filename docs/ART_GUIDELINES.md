@@ -101,6 +101,25 @@ Regeln:
 - abgerundete Kanten, sichtbare Materialstärke, zurückgesetzter dunkler Fuß
 - **Orientierungsmarke:** eine Eckkachel in Coral und ein runder Eckpfosten in Coral. Der Pfosten bleibt sichtbar, wenn die Kachel überbaut ist. Liegt die Ecke hinten, verdeckt ihn der Turm; das ist beabsichtigt.
 
+### Freischaltbare Plattformen
+
+Eigene Sprite-Sätze aus `tools/blender/render_platforms.py` (Ruhebild plus 30 Drehbilder). Geladen ist immer nur die gewählte Plattform.
+
+| Plattform | Form und Material |
+|---|---|
+| Eiche | Parkett aus zwei Holztönen, dunkler Rahmen, Messingecken |
+| Marmor | weiße Platten auf warmgrauem Stein, zwei auskragende Stufen |
+| Gletscher | Eisplatte, darunter ein gestufter, hart facettierter Eisblock |
+| Insel | Grasdeck, Erdschicht, gestufter Fels (schwebende Insel) |
+
+Regeln:
+- Oberseite der Kacheln bei z = 0, 5×5-Raster und Fugen bleiben lesbar. Zwei leicht verschiedene Töne im Schachbrett helfen beim Zählen der Felder.
+- Eckkachel und Eckpfosten in Coral bleiben die Orientierungsmarke auf jeder Plattform.
+- Alles ist um die Hochachse vierfach symmetrisch.
+- Unterseiten müssen steil zulaufen. Aus der Spielkamera ist eine Flanke bei 0° nur sichtbar, wenn sie je Einheit Einzug mehr als eine Einheit abfällt. Eine echte Spitze ist deshalb unsichtbar; Gletscher und Insel enden in gestuften Stümpfen.
+
+Ton und Moos sind weiterhin Umfärbungen der Standardplattform.
+
 ## 6. Tiefe ohne Echtzeit-3D
 
 | Effekt | Umsetzung |

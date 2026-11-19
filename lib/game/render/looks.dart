@@ -79,12 +79,18 @@ abstract final class Looks {
     'platform_moss': [(0.93, 6), (0.88, 30), (0.90, 2)],
   };
 
-  /// Sockelfarbe für die Vorschau im Shop.
-  static const platformSwatches = <String, Color>{
-    'platform_slate': FsColors.navy,
-    'platform_clay': Color(0xFF4A3435),
-    'platform_moss': Color(0xFF244438),
+  /// Plattformen mit eigenem Sprite-Satz (tools/blender/render_platforms.py).
+  /// Alle anderen nutzen die Standardplattform, gegebenenfalls umgefärbt.
+  static const platformSets = <String, String>{
+    'platform_oak': 'oak',
+    'platform_marble': 'marble',
+    'platform_glacier': 'glacier',
+    'platform_island': 'island',
   };
+
+  /// Vorschaubild einer Plattform für den Shop.
+  static String platformPreview(String id) =>
+      'assets/ui/plat_${id.substring('platform_'.length)}.png';
 
   static List<Color> palette(String id) => palettes[id] ?? FsColors.blocks;
 
