@@ -34,7 +34,23 @@ class DeviceFeedback extends GameFeedback {
 
   final Settings settings;
   bool _ready = false;
-  AudioPool? _movePool, _landPool;
+
+  /// Je Klang eine feste Zahl vorbereiteter Player, die reihum verwendet
+  /// werden. So entstehen während des Spiels keine neuen Player; früher kam
+  /// mit jedem Ton einer dazu, der nie freigegeben wurde.
+  final Map<String, List<AudioPlayer>> _voices = {};
+  final Map<String, int> _nextVoice = {};
+
+  /// Zu Ende gespielte Klänge (Diagnose: zeigt, dass wirklich abgespielt wird).
+  int _completed = 0;
+
+  /// Klänge, die sich überlappen können, bekommen mehrere Stimmen.
+  static const _voiceCount = {
+    'move.wav': 3,
+    'land.wav': 2,
+    'rotate.wav': 2,
+    'tap.wav': 2,
+  };
 
   static const _files = [
     'spawn.wav',
@@ -80,18 +96,24 @@ class DeviceFeedback extends GameFeedback {
     try {
       await AudioPlayer.global.setAudioContext(_context);
       await FlameAudio.audioCache.loadAll(_files);
-      _movePool = await FlameAudio.createPool(
-        'move.wav',
-        maxPlayers: 3,
-        audioContext: _context,
-      );
-      _landPool = await FlameAudio.createPool(
-        'land.wav',
-        maxPlayers: 2,
-        audioContext: _context,
-      );
+      for (final file in _files) {
+        _voices[file] = [
+          for (var i = 0; i < (_voiceCount[file] ?? 1); i++)
+            await _createVoice(file),
+        ];
+      }
       _ready = true;
       debugPrint('FLIPSTACK audio: bereit (${_files.length} Klänge)');
+      const stress = int.fromEnvironment('FS_AUDIO_STRESS');
+      for (var i = 0; i < stress; i++) {
+        _play(_files[i % _files.length]);
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+        if (i % 100 == 0) {
+          debugPrint(
+            'FLIPSTACK audio: Belastung $i, $_completed zu Ende gespielt',
+          );
+        }
+      }
     } catch (e) {
       _fail('init', e);
       _ready = false; // Spiel läuft ohne Ton weiter
@@ -103,20 +125,26 @@ class DeviceFeedback extends GameFeedback {
     debugPrint('FLIPSTACK audio: Fehler bei $what: $e');
   }
 
-  void _play(String file, [double volume = 1]) {
-    if (!_ready || !settings.sound) return;
-    FlameAudio.play(
-      file,
-      volume: volume,
-      audioContext: _context,
-    ).then((_) {}, onError: (Object e) => _fail(file, e));
+  Future<AudioPlayer> _createVoice(String file) async {
+    final player = AudioPlayer()..audioCache = FlameAudio.audioCache;
+    await player.setReleaseMode(ReleaseMode.stop);
+    await player.setSource(AssetSource(file));
+    player.onPlayerComplete.listen((_) => _completed++);
+    return player;
   }
 
-  void _pool(AudioPool? pool, [double volume = 1]) {
-    if (!_ready || !settings.sound || pool == null) return;
-    pool
-        .start(volume: volume)
-        .then((_) {}, onError: (Object e) => _fail('pool', e));
+  void _play(String file) {
+    if (!_ready || !settings.sound) return;
+    final voices = _voices[file];
+    if (voices == null || voices.isEmpty) return;
+    final i = _nextVoice[file] ?? 0;
+    _nextVoice[file] = (i + 1) % voices.length;
+    final player = voices[i];
+    // stop() setzt an den Anfang zurück, auch wenn der Klang noch läuft.
+    player
+        .stop()
+        .then((_) => player.resume())
+        .then((_) {}, onError: (Object e) => _fail(file, e));
   }
 
   void _haptic(Future<void> Function() f) {
@@ -128,7 +156,7 @@ class DeviceFeedback extends GameFeedback {
 
   @override
   void move() {
-    _pool(_movePool);
+    _play('move.wav');
     _haptic(HapticFeedback.selectionClick);
   }
 
@@ -137,7 +165,7 @@ class DeviceFeedback extends GameFeedback {
 
   @override
   void land() {
-    _pool(_landPool);
+    _play('land.wav');
     _haptic(HapticFeedback.mediumImpact);
   }
 

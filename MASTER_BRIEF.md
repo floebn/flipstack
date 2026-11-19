@@ -285,6 +285,7 @@ D. Eine alternative Echtzeit-3D-Lösung, falls die gewünschte Qualität mit Spr
 Erstelle zuerst einen visuellen Rotationsprototyp mit Blender.
 
 Prüfe dabei:
+
 - ob die Plattform räumlich korrekt wirkt
 - ob die Bausteine bei der Drehung überzeugend bleiben
 - ob die Beleuchtung konsistent ist

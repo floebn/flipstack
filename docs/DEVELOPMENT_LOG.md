@@ -204,3 +204,11 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Geprüft: 70 Tests, `flutter analyze` ohne Befund. Im iOS-Simulator: Hauptmenü, Aufgabenblatt, Shop, Kauf mit Rückfrage, Wechsel von Blockfarben, Hintergrund und Plattform, Ergebnis mit Münzen und Aufgaben.
 - Nicht geprüft: Konfetti-Effekt im Spiel, Plattform „Moos“, Paletten „Forest“ und „Candy“ im Spiel, Tages- und Wochenwechsel auf dem Gerät (nur per Test), Unterscheidbarkeit der Paletten bei Farbsehschwäche, Android.
 - Bekannt: Auf dem Ergebnisbildschirm verdeckt die Karte jetzt mehr vom Turm.
+
+## Abbruch beim Gerätetest und Audio-Player (19.11.2026)
+
+- Meldung vom Gerätetest: Bild friert bei Höhe 18 mitten in einer Drehung ein, Konsole zeigt „Could not acquire current drawable“ und „Lost connection to device“.
+- Befund: Auf dem iPhone liegt für diesen Zeitpunkt weder ein Absturzbericht der App noch ein Speicherbericht (Jetsam) vor, und die Konsole zeigt keinen Dart-Fehler. Die App lief im Debug-Modus über eine kabellose Verbindung; ein Debug-Build läuft auf iOS nur, solange die Verbindung zum Mac steht. Wahrscheinlichste Ursache ist deshalb die abgerissene Verbindung, nicht das Spiel. Bewiesen ist das nicht.
+- Beim Suchen gefunden und behoben: Jeder Ton erzeugte über `FlameAudio.play` einen neuen Audio-Player, der nie freigegeben wurde. Jetzt gibt es je Klang eine feste Zahl vorbereiteter Player (insgesamt 25), die reihum verwendet werden.
+- Geprüft im Simulator mit `--dart-define=FS_AUDIO_STRESS=n` (spielt n Klänge beim Start): Klänge werden zu Ende gespielt, kein Fehler im Protokoll. Der Speicherverlauf unterscheidet sich im Simulator nicht messbar von vorher.
+- Nicht geprüft: Ton auf dem Gerät mit der neuen Lösung, eine lange Runde im Release-Build.
