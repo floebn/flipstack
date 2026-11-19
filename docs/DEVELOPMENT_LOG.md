@@ -142,3 +142,30 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Echte Schlagschatten auf Seitenflächen fehlen weiterhin
 - Sprites auf der Platte: 5,9 MB. Bildspeicher und Bildrate auf echten Geräten sind nicht gemessen
 - Ob 8 Farben für Menschen mit Farbsehschwäche unterscheidbar sind, ist nicht geprüft
+
+## 19.11.2026 – Phase 4: Oberfläche und Spielgefühl
+
+**Umgesetzt:**
+- Hauptmenü über einem Beispielturm, der sich dreht; Spielen, Bestwert, Einstellungen
+- Interaktives Tutorial in vier Schritten (Verschieben, Ablegen, Drehen, Punkte), überspringbar, erscheint nur beim ersten Start
+- Pause mit Weiter, Neu starten, Ton, Vibration, Menü; automatische Pause, wenn die App den Vordergrund verlässt
+- Einstellungen mit Ton, Vibration, Tutorial und Statistik
+- 20 Klänge per Synthese erzeugt (904 KB), Abspielen über `flame_audio`
+- Ergebnis zeigt die Spielzeit und führt zurück ins Hauptmenü
+- App-Zustände mit fester Übergangstabelle; Oberfläche in eigene Dateien aufgeteilt
+
+**Geprüft:**
+- 49 Unit-Tests bestanden, `flutter analyze` ohne Befund
+- Im iOS-Simulator von Hand: Menü, Tutorial Schritt 1 bis 4, Pause und Fortsetzen, App-Wechsel (pausiert automatisch), zurück ins Menü, Einstellungen
+- Simulator-Protokoll: Audio-Sitzung startet ohne Fehlermeldung
+
+**Im Lauf gefunden und behoben:**
+- Tutorial-Karte verdeckte den schwebenden Stein; liegt jetzt über den Knöpfen
+- Dreh-Geräusch enthielt zu viel hohes Rauschen (im Spektrogramm sichtbar); stärker gefiltert
+
+**Nicht geprüft / offen:**
+- **Die Klänge habe ich nicht gehört.** Lautstärke, Klangfarbe und ob sie angenehm sind, kann nur ein Test am Gerät zeigen
+- Vibration, echte Geräte, Android, andere Displaygrößen
+- Keine eigene Schrift; es wird die Systemschrift verwendet
+- Spielende-Regeln unverändert (Gipfel bei 30); die Umstellung auf Endlos ist besprochen, aber zurückgestellt
+- Wird die App beendet, geht die laufende Runde verloren

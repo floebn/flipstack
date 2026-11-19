@@ -6,8 +6,8 @@ import 'package:flame/game.dart';
 import 'package:flutter/animation.dart' show Curves;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart' show TextStyle, FontWeight;
-import 'package:flutter/services.dart' show HapticFeedback;
 
+import '../services/feedback/game_feedback.dart';
 import '../services/storage/stats_store.dart';
 import 'core/game_session.dart';
 import 'core/piece.dart';
@@ -30,6 +30,7 @@ class RoundResult {
     required this.bestCombo,
     required this.newBest,
     required this.stats,
+    required this.seconds,
     this.blockCause,
     this.blockedPiece,
   });
@@ -41,6 +42,9 @@ class RoundResult {
   final int score, height, pieces, bestCombo;
   final bool newBest;
   final PlayerStats stats;
+
+  /// Reine Spielzeit der Runde in Sekunden (ohne Pausen).
+  final int seconds;
 }
 
 /// Was die Flutter-Oberfläche anzeigen muss.
@@ -91,6 +95,9 @@ class _Dust {
   double t = 0;
 }
 
+/// Was der Spieler gerade getan hat (für das Tutorial).
+enum GameEvent { moved, rotated, placed }
+
 /// Verbindet Spiellogik, Animationen und Darstellung.
 class FlipstackGame extends FlameGame {
   FlipstackGame({
@@ -98,9 +105,23 @@ class FlipstackGame extends FlameGame {
     this.showFps = false,
     this.seed,
     this.autoplay = false,
-  }) : store = store ?? MemoryStatsStore();
+    GameFeedback? feedback,
+    this.onEvent,
+  }) : store = store ?? MemoryStatsStore(),
+       feedback = feedback ?? SilentFeedback();
 
   final StatsStore store;
+  final GameFeedback feedback;
+  final void Function(GameEvent event)? onEvent;
+
+  /// Im Hauptmenü zeigt das Spiel einen Beispielturm, der sich gelegentlich
+  /// dreht; Eingaben sind dann gesperrt.
+  bool _menu = true;
+  double _menuT = 0;
+  double _playSeconds = 0;
+
+  bool get inMenu => _menu;
+  PlayerStats get stats => _stats;
   final bool showFps;
   final int? seed;
 
@@ -116,6 +137,9 @@ class FlipstackGame extends FlameGame {
   static const warnBelow = 4;
 
   final ValueNotifier<HudState> hud = ValueNotifier(const HudState());
+
+  /// Wird wahr, sobald alle Assets geladen sind.
+  final ValueNotifier<bool> assetsReady = ValueNotifier(false);
 
   /// Oberer sicherer Bereich (Notch), von der Oberfläche gesetzt.
   double safeTop = 0;
@@ -190,14 +214,52 @@ class FlipstackGame extends FlameGame {
         FpsTextComponent(position: Vector2(12, 130), scale: Vector2.all(0.5)),
       );
     }
-    restart();
+    if (autoplay) {
+      restart();
+    } else {
+      showMenu();
+    }
     _ready = true;
+    assetsReady.value = true;
+  }
+
+  /// Zeigt den Beispielturm für das Hauptmenü.
+  void showMenu() {
+    _menu = true;
+    _menuT = 0;
+    _resetRound(GameSession(seed: 11));
+    final s = _session;
+    final rng = math.Random(11);
+    for (var i = 0; i < 12 && s.phase == GamePhase.preview; i++) {
+      final o = s.rules.validPlacements(s.board, s.current);
+      int cost((int, int, int) c) {
+        final p = s.rules.evaluate(s.board, s.current, c.$1, c.$2, c.$3);
+        return p.z0 * 10 + (p.columns - p.supported) * 25 + rng.nextInt(4);
+      }
+
+      o.sort((a, b) => cost(a).compareTo(cost(b)));
+      s.orientation = o.first.$3;
+      s.moveTo(o.first.$1, o.first.$2);
+      s.place();
+      s.finishPlacing();
+    }
+    s.orientation = 0;
+    _publish();
   }
 
   // ---------------------------------------------------------------- Eingaben
 
+  /// Startet eine neue Runde.
   void restart() {
-    _session = GameSession(seed: seed);
+    _menu = false;
+    _playSeconds = 0;
+    _resetRound(GameSession(seed: seed));
+    feedback.spawn();
+    _publish();
+  }
+
+  void _resetRound(GameSession session) {
+    _session = session;
     // Jede Runde eine andere Farbstimmung (später frei wählbar)
     _background.theme =
         BackgroundTheme.all[_round++ % BackgroundTheme.all.length];
@@ -213,13 +275,12 @@ class FlipstackGame extends FlameGame {
     _dust.clear();
     _snapHover();
     _spawnT = 0;
-    _publish();
   }
 
   /// +1 = Vierteldrehung gegen den Uhrzeigersinn (von oben gesehen, Knopf
   /// "links"), -1 = im Uhrzeigersinn (Knopf "rechts").
   void rotate(int dir) {
-    if (!_ready) return;
+    if (!_ready || _menu) return;
     if (_session.phase == GamePhase.rotating ||
         _session.phase == GamePhase.placing) {
       _queuedRotation = dir;
@@ -229,7 +290,8 @@ class FlipstackGame extends FlameGame {
     if (_session.rotate(dir)) {
       _fromDeg = from;
       _rotT = 0;
-      HapticFeedback.selectionClick();
+      feedback.rotate();
+      onEvent?.call(GameEvent.rotated);
       _publish();
     }
   }
@@ -240,25 +302,26 @@ class FlipstackGame extends FlameGame {
   }
 
   void dragUpdate(Offset delta) {
-    if (!_ready) return;
+    if (!_ready || _menu) return;
     final (dx, dy) = _projection.groundDelta(delta);
     final maxX = (_session.grid - _session.current.width).toDouble();
     final maxY = (_session.grid - _session.current.depth).toDouble();
     _dragX = (_dragX + dx).clamp(-0.45, maxX + 0.45);
     _dragY = (_dragY + dy).clamp(-0.45, maxY + 0.45);
     if (_session.moveTo(_dragX.round(), _dragY.round())) {
-      HapticFeedback.selectionClick();
+      feedback.move();
+      onEvent?.call(GameEvent.moved);
       _publish();
     }
   }
 
   void drop() {
-    if (!_ready || _session.phase != GamePhase.preview) return;
+    if (!_ready || _menu || _session.phase != GamePhase.preview) return;
     final hover = _hz;
     final r = _session.place();
     if (r == null) {
       _shakeT = 0;
-      HapticFeedback.heavyImpact();
+      feedback.invalid();
       return;
     }
     final (p, s, id) = r;
@@ -268,6 +331,7 @@ class FlipstackGame extends FlameGame {
     _fallDur = (0.11 * math.sqrt(_fallFrom)).clamp(0.14, 0.42);
     _pendingScore = s;
     _landedCells = p.cells;
+    feedback.drop();
     _publish();
   }
 
@@ -279,6 +343,17 @@ class FlipstackGame extends FlameGame {
     if (!_ready) return;
     final s = _session;
     _time += dt;
+    if (_menu) {
+      // Beispielturm dreht sich alle paar Sekunden um 90° (zeigt die Kernmechanik)
+      _menuT += dt;
+      if (_menuT > 2.8 && s.phase == GamePhase.preview) {
+        _menuT = 0;
+        _fromDeg = s.orientation * 90.0;
+        if (s.rotate(1)) _rotT = 0;
+      }
+    } else if (s.phase != GamePhase.gameOver) {
+      _playSeconds += dt;
+    }
 
     if (s.phase == GamePhase.rotating) {
       _rotT += dt / rotationSeconds;
@@ -309,7 +384,7 @@ class FlipstackGame extends FlameGame {
     _hz += (s.height + 2.4 - _hz) * (1 - math.exp(-dt * 8));
     _cam += (math.max(0, s.height - 3) - _cam) * (1 - math.exp(-dt * 4));
 
-    if (autoplay) _autoplayStep(dt);
+    if (autoplay && !_menu) _autoplayStep(dt);
 
     for (final p in _popups) {
       p.t += dt / 1.0;
@@ -330,7 +405,15 @@ class FlipstackGame extends FlameGame {
     _squashId = id;
     _squashT = 0;
     _fallId = -1;
-    HapticFeedback.mediumImpact();
+    final sc = _pendingScore!;
+    feedback.land();
+    if (sc.milestones > 0) {
+      feedback.milestone();
+    } else if (sc.layers > 0) {
+      feedback.layer();
+    } else {
+      feedback.combo(sc.combo);
+    }
 
     // Bausteine direkt darunter federn leicht mit (rein optisch, kehren exakt zurück)
     final below = {for (final (x, y, z) in _landedCells) (x, y, z - 1)};
@@ -339,7 +422,7 @@ class FlipstackGame extends FlameGame {
         if (c.pieceId != id && below.contains((c.x, c.y, c.z))) c.pieceId,
     };
 
-    _spawnEffects(_pendingScore!);
+    _spawnEffects(sc);
     s.finishPlacing();
     if (s.phase == GamePhase.gameOver) {
       final newBest = s.score > _stats.bestScore && s.score > 0;
@@ -353,15 +436,18 @@ class FlipstackGame extends FlameGame {
         bestCombo: s.bestCombo,
         newBest: newBest,
         stats: _stats,
+        seconds: _playSeconds.round(),
         blockCause: s.blockCause,
         blockedPiece: s.blockCause == null ? null : s.current,
       );
       _overT = 0;
-      HapticFeedback.heavyImpact();
+      newBest ? feedback.highscore() : feedback.gameOver();
     } else {
       _snapHover();
       _spawnT = 0;
+      feedback.spawn();
     }
+    onEvent?.call(GameEvent.placed);
     _publish();
     _runQueuedRotation();
   }
@@ -498,7 +584,8 @@ class FlipstackGame extends FlameGame {
     final playUnit = size.x / 8.2;
     final over = Curves.easeInOutCubic.transform(_overT);
     _projection.unit = playUnit;
-    final playY = size.y * 0.60 + _cam * _projection.unitHeight;
+    final playY =
+        size.y * (_menu ? 0.57 : 0.60) + _cam * _projection.unitHeight;
     if (over > 0) {
       final needed =
           s.height * 0.8165 + 5.2; // Turmhöhe + Plattformtiefe (Welteinheiten)
@@ -562,7 +649,9 @@ class FlipstackGame extends FlameGame {
 
     final blocked =
         s.phase == GamePhase.gameOver && s.blockCause != null && _overT < 1;
-    if (s.phase == GamePhase.preview ||
+    if (_menu) {
+      // im Menü kein schwebender Baustein
+    } else if (s.phase == GamePhase.preview ||
         s.phase == GamePhase.rotating ||
         blocked) {
       // Vorschau der Landeposition (nicht während der Drehung)
@@ -613,6 +702,7 @@ class FlipstackGame extends FlameGame {
         s.phase == GamePhase.preview &&
         s.placement.error == PlacementError.tooUneven;
     final showGuide =
+        !_menu &&
         s.phase != GamePhase.gameOver &&
         (spread >= maxSpread - 1 || blockedByHeight);
     final pulse = 0.5 + 0.5 * math.sin(_time * 5);
@@ -671,11 +761,11 @@ class FlipstackGame extends FlameGame {
     }
 
     // Nächster Baustein (oben rechts)
-    if (s.phase != GamePhase.gameOver) {
+    if (!_menu && s.phase != GamePhase.gameOver) {
       _renderer.renderPiece(
         canvas,
         s.next,
-        Offset(size.x - 58, safeTop + 66),
+        Offset(size.x - 58, safeTop + 116),
         15,
       );
     }

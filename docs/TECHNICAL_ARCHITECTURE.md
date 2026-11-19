@@ -1,6 +1,6 @@
 # FLIPSTACK – Technische Architektur
 
-Stand: Phase 3 · Darstellungsentscheidung in Abschnitt 6
+Stand: Phase 4 · Darstellungsentscheidung in Abschnitt 6
 
 ## 1. Stack
 
@@ -127,9 +127,23 @@ Spiellogik und `IsoProjection` hängen nicht von der Darstellung ab. Falls C1 be
 - Nachbarn: kleiner gedämpfter Versatz (≤ 2 px) bei direkt angrenzenden Würfeln, kehrt immer exakt zurück.
 - Kein Zustand der Logik hängt von Animationen ab. Animationen sind reine Darstellung.
 
-## 8. Dienste und Datenschutz
+## 8. Dienste und App-Ablauf
 
-Jeder Dienst hat eine abstrakte Klasse und mindestens eine No-op-Implementierung. Werbung und Analytics werden erst nach erteilter Einwilligung initialisiert. Fehlt das Netz, laufen alle Kernfunktionen lokal weiter.
+**Ein Bildschirm, mehrere Zustände.** `GameScreen` zeigt immer das Spiel und legt je nach Zustand eine Oberfläche darüber: Hauptmenü, Spielanzeige, Tutorial, Pause, Ergebnis. Zwischen den Zuständen wird nichts geladen. Im Hauptmenü zeigt das Spiel einen Beispielturm, der sich alle paar Sekunden dreht.
+
+**Zustände** (`lib/app/app_flow.dart`): `loading`, `mainMenu`, `tutorial`, `playing`, `paused`, `gameOver`, mit fester Tabelle erlaubter Übergänge. Die feineren Zustände einer Runde (`preview`, `placing`, `rotating`) liegen in `GameSession`. Der Zustand `reward` aus dem Brief folgt mit Phase 5.
+
+**Dienste hinter Schnittstellen:**
+
+| Dienst | Schnittstelle | Umsetzungen |
+|---|---|---|
+| Statistik | `StatsStore` | lokal (`shared_preferences`), im Speicher |
+| Einstellungen | `Settings` | lokal |
+| Ton und Vibration | `GameFeedback` | Gerät (`flame_audio` 2.12.2, Plattform-Haptik), stumm |
+
+Schlägt Laden, Speichern oder Abspielen fehl, läuft das Spiel ohne diese Funktion weiter. Die App nutzt bisher kein Netz. Werbung und Analytics kommen in Phase 6 und werden erst nach Einwilligung gestartet.
+
+**Ton:** Alle Klänge entstehen durch Synthese (`tools/audio/make_sounds.py`), es gibt keine fremden Aufnahmen. Der Stummschalter wird respektiert, Musik anderer Apps läuft weiter.
 
 ## 9. Qualitätssicherung
 
