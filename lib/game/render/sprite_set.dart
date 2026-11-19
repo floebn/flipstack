@@ -5,6 +5,11 @@ import 'package:flame/cache.dart';
 import 'package:flutter/services.dart';
 
 /// In Blender gerenderte Sprites samt Metadaten (assets/sprites/sprites.json).
+///
+/// Es gibt nur EIN graues Würfel-Sprite. Die Blockfarbe entsteht durch
+/// Einfärben zur Laufzeit ([tint]); das entspricht dem diffusen Material aus
+/// Blender (Albedo × Licht) und erlaubt beliebig viele Farben ohne
+/// zusätzlichen Bildspeicher.
 class SpriteSet {
   SpriteSet._();
 
@@ -17,11 +22,15 @@ class SpriteSet {
   late final double tileCenterZ;
   late final double platformTargetZ;
   late final List<double> sunDir;
-  late final List<Image> cubes;
 
-  /// Abgedunkelte Würfelfarben für die Fugen zwischen Würfeln.
-  late final List<Color> cubeShade;
+  /// Grauer Würfel, Atlas über die Drehwinkel.
+  late final Image cube;
   late final Image marker;
+
+  /// Eckpfosten (drehsymmetrisch).
+  late final Image peg;
+  late final double pegCenterZ;
+  late final double pegOffset;
 
   /// Plattform im Ruhezustand (volle Auflösung).
   late final Image platformStill;
@@ -30,44 +39,63 @@ class SpriteSet {
   late final List<Image> platform;
   late final double platformFrameScale;
 
-  static Future<SpriteSet> load() async {
+  late final List<Color> palette;
+
+  /// Farbfilter je Blockfarbe.
+  late final List<ColorFilter> tint;
+
+  /// Abgedunkelte Blockfarbe für die Fugen zwischen Würfeln.
+  late final List<Color> shade;
+  late final ColorFilter invalidTint;
+  late final double _gray;
+
+  static Future<SpriteSet> load(List<Color> palette) async {
     final images = Images(prefix: 'assets/sprites/');
     final meta = jsonDecode(
       await rootBundle.loadString('assets/sprites/sprites.json'),
     ) as Map<String, dynamic>;
+    double d(Object? v) => (v as num).toDouble();
     final s = SpriteSet._()
-      ..ppu = (meta['ppu'] as num).toDouble()
+      ..ppu = d(meta['ppu'])
       ..frames = meta['frames'] as int
       ..angleStepDeg = meta['angleStepDeg'] as int
       ..atlasCols = meta['atlasCols'] as int
-      ..cubeSize = (meta['cube']['w'] as num).toDouble()
-      ..tileSize = Size(
-        (meta['tile']['w'] as num).toDouble(),
-        (meta['tile']['h'] as num).toDouble(),
-      )
-      ..tileCenterZ = (meta['tile']['centerZ'] as num).toDouble()
-      ..platformTargetZ = (meta['platform']['targetZ'] as num).toDouble()
-      ..sunDir = [
-        for (final v in meta['sunDir'] as List) (v as num).toDouble(),
-      ];
-    final colors = (meta['cube']['colors'] as List).cast<String>();
-    s.cubeShade = [
-      for (final h in (meta['cube']['hex'] as List).cast<String>())
-        Color.lerp(
-          Color(0xFF000000 | int.parse(h.substring(1), radix: 16)),
-          const Color(0xFF16202B),
-          0.2,
-        )!,
+      ..cubeSize = d(meta['cube']['w'])
+      .._gray = d(meta['cube']['grayLevel'])
+      ..tileSize = Size(d(meta['tile']['w']), d(meta['tile']['h']))
+      ..tileCenterZ = d(meta['tile']['centerZ'])
+      ..pegCenterZ = d(meta['peg']['centerZ'])
+      ..pegOffset = d(meta['peg']['offset'])
+      ..platformTargetZ = d(meta['platform']['targetZ'])
+      ..platformFrameScale = d(meta['platform']['frameScale'])
+      ..sunDir = [for (final v in meta['sunDir'] as List) d(v)]
+      ..palette = palette;
+    s.tint = [for (final c in palette) s.tintFor(c)];
+    s.shade = [
+      for (final c in palette) Color.lerp(c, const Color(0xFF16202B), 0.2)!,
     ];
-    s.cubes = [for (final c in colors) await images.load('cube_$c.png')];
+    s.invalidTint = s.tintFor(const Color(0xFFE5484D));
+    s.cube = await images.load('cube.png');
     s.marker = await images.load('tile_marker.png');
-    s.platformFrameScale = (meta['platform']['frameScale'] as num).toDouble();
+    s.peg = await images.load('peg.png');
     s.platformStill = await images.load('platform_still.png');
     s.platform = [
       for (var i = 0; i < s.frames; i++)
         await images.load('platform_${i.toString().padLeft(3, '0')}.png'),
     ];
     return s;
+  }
+
+  /// Filter, der das graue Würfel-Sprite in [c] einfärbt. Die Kanäle werden
+  /// mit Farbwert / Grauwert skaliert (Faktoren über 1 sind erlaubt).
+  ColorFilter tintFor(Color c) {
+    final r = c.r * 255 / _gray, g = c.g * 255 / _gray, b = c.b * 255 / _gray;
+    return ColorFilter.matrix(<double>[
+      r, 0, 0, 0, 0, //
+      0, g, 0, 0, 0, //
+      0, 0, b, 0, 0, //
+      0, 0, 0, 1, 0, //
+    ]);
   }
 
   /// Sprite-Frame für einen Drehwinkel in Grad (Würfel/Plattform sind 90°-symmetrisch).

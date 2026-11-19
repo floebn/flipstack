@@ -181,24 +181,77 @@ def add_tile(i, j, color_name, hex_color, parent=None):
     return ob
 
 
+PLINTH_H = 0.26
+PLINTH_INSET = 0.42
+PEG_R = 0.17
+PEG_TOP = 0.10
+PEG_OFFSET = 0.10  # Abstand der Pfostenmitte von der Rasterecke nach aussen
+
+
 def add_platform(parent=None, with_marker=True, marker_cell=(0, 0)):
-    """Sockel + n×n leicht erhabene Kacheln. Oberseite der Kacheln bei z = 0."""
+    """Sockel + zurückgesetzter Fuss + n×n leicht erhabene Kacheln.
+
+    Oberseite der Kacheln bei z = 0. Der zurückgesetzte Fuss lässt die Plattform
+    leicht schweben. with_marker färbt eine Eckkachel und setzt den Eckpfosten
+    (nur für Referenz-Renderings; im Spiel sind beide eigene Sprites).
+    """
     n = CFG["grid"]
     col = CFG["colors"]
     size = n + 2 * BASE_MARGIN
+    base_top = -TILE_H * 0.6
     base = bpy.data.objects.new(
         "Platform_Base", beveled_box_mesh("FS_Base", size, size, BASE_H, 0.09, 4))
     base.data.materials.append(material("M_navy", col["navy"], 0.6))
-    base.location = (0, 0, -TILE_H * 0.6 - BASE_H / 2)
+    base.location = (0, 0, base_top - BASE_H / 2)
     base.parent = parent
     collection("Platform").objects.link(base)
+    ps = size - 2 * PLINTH_INSET
+    plinth = bpy.data.objects.new(
+        "Platform_Plinth", beveled_box_mesh("FS_Plinth", ps, ps, PLINTH_H, 0.05, 3))
+    plinth.data.materials.append(material("M_plinth", col["plinth"], 0.7))
+    plinth.location = (0, 0, base_top - BASE_H - PLINTH_H / 2 + 0.02)
+    plinth.parent = parent
+    collection("Platform").objects.link(plinth)
     for i in range(n):
         for j in range(n):
             if with_marker and (i, j) == marker_cell:
                 add_tile(i, j, "coral", col["coral"], parent)
             else:
                 add_tile(i, j, "platform_top", col["platform_top"], parent)
+    if with_marker:
+        peg = add_peg(parent)
+        h = n / 2 + PEG_OFFSET
+        sx = -1 if marker_cell[0] == 0 else 1
+        sy = -1 if marker_cell[1] == 0 else 1
+        peg.location.x, peg.location.y = sx * h, sy * h
     return base
+
+
+def peg_bounds():
+    """(unten, oben) des Eckpfostens."""
+    return (-TILE_H * 0.6 - BASE_H + 0.02, PEG_TOP)
+
+
+def add_peg(parent=None):
+    """Runder Eckpfosten als Orientierungsmarke. Als Zylinder sieht er aus jedem
+    Drehwinkel gleich aus, daher genügt im Spiel ein einziges Sprite."""
+    lo, hi = peg_bounds()
+    me = bpy.data.meshes.new("FS_Peg")
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=48, radius1=PEG_R, radius2=PEG_R, depth=hi - lo)
+    rim = [e for e in bm.edges if abs(e.verts[0].co.z - e.verts[1].co.z) < 1e-6]
+    bmesh.ops.bevel(bm, geom=rim, offset=0.04, segments=3, profile=0.5, affect="EDGES")
+    bm.to_mesh(me)
+    bm.free()
+    for p in me.polygons:
+        p.use_smooth = True
+    me.set_sharp_from_angle(angle=math.radians(40))
+    ob = bpy.data.objects.new("Platform_Peg", me)
+    ob.data.materials.append(material("M_coral", CFG["colors"]["coral"], 0.6))
+    ob.location = (0, 0, (lo + hi) / 2)
+    ob.parent = parent
+    collection("Platform").objects.link(ob)
+    return ob
 
 
 def cell_center(i, j, k):

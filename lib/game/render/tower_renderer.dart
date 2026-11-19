@@ -16,7 +16,7 @@ class RenderCube {
     this.opacity = 1,
     this.invalid = false,
     this.squash = 1,
-    this.shadowTop,
+    this.cell,
     this.solid = true,
   });
 
@@ -32,11 +32,11 @@ class RenderCube {
   /// Vertikale Stauchung beim Aufprall (1 = keine).
   final double squash;
 
-  /// Falls die Oberseite frei liegt: Plattformzelle (x, y) und Höhe der
-  /// Oberseite, damit Schatten anderer Säulen darauf gezeichnet werden.
-  final (int, int, int)? shadowTop;
+  /// Plattformzelle (x, y, z) eines fest liegenden Würfels. Nur dann werden
+  /// Schatten und Eck-Schattierung auf seinen Flächen gezeichnet.
+  final (int, int, int)? cell;
 
-  /// Fugen zu Nachbarwürfeln dunkel füllen (für feste Würfel, nicht für die Vorschau).
+  /// Fugen zu Nachbarwürfeln füllen (für feste Würfel, nicht für die Vorschau).
   final bool solid;
 }
 
@@ -49,30 +49,60 @@ class TowerRenderer {
   final int grid;
 
   static const _shadowColor = Color(0x52101820);
-  static const _invalidTint = ColorFilter.mode(
-    Color(0xFFE5484D),
-    BlendMode.srcATop,
-  );
+  static const _aoColor = Color(0xFF101820);
+  static const _aoClear = Color(0x00101820);
   static const _corners = [(-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0)];
+  static const _dirs = [(1, 0), (-1, 0), (0, 1), (0, -1)];
 
   final Paint _sprite = Paint()..filterQuality = FilterQuality.medium;
+  final Paint _cubePaint = Paint()..filterQuality = FilterQuality.medium;
+  final Paint _fill = Paint();
 
   double get _half => (grid - 1) / 2;
 
-  /// [heights] = Säulenhöhen (Index y * grid + x) für die Schattenberechnung.
+  int _h(List<int> heights, int x, int y) =>
+      x < 0 || y < 0 || x >= grid || y >= grid ? -1 : heights[y * grid + x];
+
+  /// [heights] = Säulenhöhen (Index y * grid + x) für Schatten.
+  /// [markerCorner] = Ecke (±1, ±1) der Plattform mit Orientierungsmarke.
   void render(
     Canvas canvas,
     IsoProjection p,
     List<RenderCube> cubes,
     double thetaDeg,
     List<int> heights, {
-    (int, int)? markerCell,
+    (int, int)? markerCorner,
     Set<int> highlight = const {},
     Color highlightColor = const Color(0x00000000),
   }) {
     final theta = thetaDeg * math.pi / 180;
     final frame = sprites.frameFor(thetaDeg);
     final scale = p.unit / sprites.ppu;
+
+    // Eckpfosten: je nach Lage hinter der Plattform, davor oder vor allem
+    double pegX = 0, pegY = 0, pegDepth = 0;
+    if (markerCorner != null) {
+      (pegX, pegY) = IsoProjection.rotate(
+        markerCorner.$1 * sprites.pegOffset,
+        markerCorner.$2 * sprites.pegOffset,
+        theta,
+      );
+      pegDepth = pegX - pegY;
+    }
+    void drawPeg() => _draw(
+      canvas,
+      sprites.peg,
+      Rect.fromLTWH(
+        0,
+        0,
+        sprites.peg.width.toDouble(),
+        sprites.peg.height.toDouble(),
+      ),
+      p.projectWorld(pegX, pegY, sprites.pegCenterZ),
+      scale,
+      _sprite,
+    );
+    if (markerCorner != null && pegDepth < -1) drawPeg();
 
     final still = thetaDeg % 90 == 0;
     final img = still ? sprites.platformStill : sprites.platform[frame];
@@ -85,82 +115,83 @@ class TowerRenderer {
       _sprite,
     );
 
-    if (markerCell != null) {
+    if (markerCorner != null) {
+      final mx = markerCorner.$1 < 0 ? 0 : grid - 1,
+          my = markerCorner.$2 < 0 ? 0 : grid - 1;
       _draw(
         canvas,
         sprites.marker,
         sprites.atlasRect(frame, sprites.tileSize),
-        p.project(
-          markerCell.$1 - _half,
-          markerCell.$2 - _half,
-          sprites.tileCenterZ,
-          theta,
-        ),
+        p.project(mx - _half, my - _half, sprites.tileCenterZ, theta),
         scale,
         _sprite,
       );
+      if (pegDepth >= -1 && pegDepth <= 1) drawPeg();
     }
 
-    // Schatten auf freien Plattformfeldern
+    // Freie Plattformfelder: Schatten, Eck-Schattierung, Hervorhebung
     for (var y = 0; y < grid; y++) {
       for (var x = 0; x < grid; x++) {
-        if (heights[y * grid + x] == 0) {
-          _surfaceShadow(canvas, p, x, y, 0, theta, heights, 0.5);
-          if (highlight.contains(y * grid + x)) {
-            canvas.drawPath(
-              _surfacePath(p, x, y, 0, theta, 0.46),
-              Paint()..color = highlightColor,
-            );
-          }
-        }
-      }
-    }
-
-    // Würfel von hinten nach vorne; Schatten auf einer Oberseite direkt nach ihrem Würfel
-    cubes.sort((a, b) => (a.wx - a.wy + a.z).compareTo(b.wx - b.wy + b.z));
-    final cell = Size(sprites.cubeSize, sprites.cubeSize);
-    final paint = Paint()..filterQuality = FilterQuality.medium;
-    for (final c in cubes) {
-      paint
-        ..color = Color.fromRGBO(255, 255, 255, c.opacity)
-        ..colorFilter = c.invalid ? _invalidTint : null;
-      final center = p.projectWorld(c.wx, c.wy, c.z);
-      final src = sprites.atlasRect(c.frame, cell);
-      if (c.solid && c.squash == 1) _underlay(canvas, p, c, theta);
-      if (c.squash == 1) {
-        _draw(canvas, sprites.cubes[c.color], src, center, scale, paint);
-      } else {
-        // um die Standfläche stauchen, Breite gleicht leicht aus
-        final base = center.dy + 0.5 * p.unitHeight;
-        final w = src.width * scale * (1 + (1 - c.squash) * 0.5),
-            h = src.height * scale * c.squash;
-        canvas.drawImageRect(
-          sprites.cubes[c.color],
-          src,
-          Rect.fromCenter(
-            center: Offset(center.dx, base - 0.5 * p.unitHeight * c.squash),
-            width: w,
-            height: h,
-          ),
-          paint,
-        );
-      }
-      final t = c.shadowTop;
-      if (t != null) {
-        _surfaceShadow(canvas, p, t.$1, t.$2, t.$3, theta, heights, 0.47);
-        if (highlight.contains(t.$2 * grid + t.$1)) {
+        if (heights[y * grid + x] != 0) continue;
+        _surfaceShadow(canvas, p, x, y, 0, theta, heights, 0.5);
+        _topOcclusion(canvas, p, x, y, 0, theta, heights);
+        if (highlight.contains(y * grid + x)) {
           canvas.drawPath(
-            _surfacePath(p, t.$1, t.$2, t.$3, theta, 0.44),
-            Paint()..color = highlightColor,
+            _surfacePath(p, x, y, 0, theta, 0.46),
+            _fill..color = highlightColor,
           );
         }
       }
     }
+
+    // Würfel von hinten nach vorne; Flächen-Effekte direkt nach ihrem Würfel
+    cubes.sort((a, b) => (a.wx - a.wy + a.z).compareTo(b.wx - b.wy + b.z));
+    final cellSize = Size(sprites.cubeSize, sprites.cubeSize);
+    for (final c in cubes) {
+      _cubePaint
+        ..color = Color.fromRGBO(255, 255, 255, c.opacity)
+        ..colorFilter = c.invalid ? sprites.invalidTint : sprites.tint[c.color];
+      final center = p.projectWorld(c.wx, c.wy, c.z);
+      final src = sprites.atlasRect(c.frame, cellSize);
+      if (c.solid && c.squash == 1) _underlay(canvas, p, c, theta);
+      if (c.squash == 1) {
+        _draw(canvas, sprites.cube, src, center, scale, _cubePaint);
+      } else {
+        // um die Standfläche stauchen, Breite gleicht leicht aus
+        final base = center.dy + 0.5 * p.unitHeight;
+        canvas.drawImageRect(
+          sprites.cube,
+          src,
+          Rect.fromCenter(
+            center: Offset(center.dx, base - 0.5 * p.unitHeight * c.squash),
+            width: src.width * scale * (1 + (1 - c.squash) * 0.5),
+            height: src.height * scale * c.squash,
+          ),
+          _cubePaint,
+        );
+      }
+      final cell = c.cell;
+      if (cell == null) continue;
+      final (x, y, z) = cell;
+      _sideOcclusion(canvas, p, x, y, z, theta, heights);
+      if (heights[y * grid + x] == z + 1) {
+        _surfaceShadow(canvas, p, x, y, z + 1, theta, heights, 0.47);
+        _topOcclusion(canvas, p, x, y, z + 1, theta, heights);
+        if (highlight.contains(y * grid + x)) {
+          canvas.drawPath(
+            _surfacePath(p, x, y, z + 1, theta, 0.44),
+            _fill..color = highlightColor,
+          );
+        }
+      }
+    }
+
+    if (markerCorner != null && pegDepth > 1) drawPeg();
   }
 
-  /// Füllt die Silhouette des (ungefasten) Würfels dunkel. Dadurch erscheinen
-  /// die Fugen zwischen benachbarten Würfeln als Schattenfuge, statt dass
-  /// dahinterliegende Würfel durchscheinen.
+  /// Füllt die Silhouette des (ungefasten) Würfels im leicht abgedunkelten
+  /// Eigenton. Dadurch erscheinen die Fugen zwischen benachbarten Würfeln als
+  /// weiche Falze, statt dass dahinterliegende Würfel durchscheinen.
   void _underlay(Canvas canvas, IsoProjection p, RenderCube c, double theta) {
     final a = c.frame == 0 ? 0.0 : theta;
     const k = 0.5;
@@ -180,11 +211,11 @@ class TowerRenderer {
     path.close();
     canvas.drawPath(
       path,
-      Paint()..color = sprites.cubeShade[c.color].withValues(alpha: c.opacity),
+      _fill..color = sprites.shade[c.color].withValues(alpha: c.opacity),
     );
   }
 
-  /// Kleine Vorschau eines Bausteins (für "nächster Baustein").
+  /// Kleine Darstellung eines Bausteins (nächster Baustein, Ergebnis).
   void renderPiece(
     Canvas canvas,
     PieceShape shape,
@@ -198,14 +229,17 @@ class TowerRenderer {
     final cells = [...shape.cells]
       ..sort((a, b) => (a.$1 - a.$2 + a.$3).compareTo(b.$1 - b.$2 + b.$3));
     final src = sprites.atlasRect(0, Size(sprites.cubeSize, sprites.cubeSize));
+    _cubePaint
+      ..color = const Color(0xFFFFFFFF)
+      ..colorFilter = sprites.tint[shape.color];
     for (final (x, y, z) in cells) {
       _draw(
         canvas,
-        sprites.cubes[shape.color],
+        sprites.cube,
         src,
         p.projectWorld(x - cx, y - cy, z - cz),
         unit / sprites.ppu,
-        _sprite,
+        _cubePaint,
       );
     }
   }
@@ -284,6 +318,135 @@ class TowerRenderer {
     );
   }
 
+  /// Weicher Schatten der ganzen Plattform auf dem Untergrund.
+  void renderGroundShadow(
+    Canvas canvas,
+    IsoProjection p,
+    double thetaDeg,
+    Color color,
+  ) {
+    final theta = thetaDeg * math.pi / 180;
+    final half = grid / 2 + 0.3;
+    final path = Path();
+    for (var i = 0; i < 4; i++) {
+      final (rx, ry) = IsoProjection.rotate(
+        _corners[i].$1 * half,
+        _corners[i].$2 * half,
+        theta,
+      );
+      final o = p.projectWorld(rx - 0.25, ry + 0.45, -1.15);
+      i == 0 ? path.moveTo(o.dx, o.dy) : path.lineTo(o.dx, o.dy);
+    }
+    path.close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, p.unit * 0.35),
+    );
+  }
+
+  /// Verlauf von einer Kante in die Fläche hinein (Schattierung in Ecken).
+  void _strip(
+    Canvas canvas,
+    IsoProjection p,
+    (double, double, double) a,
+    (double, double, double) b,
+    (double, double, double) inward,
+    double alpha,
+  ) {
+    final a0 = p.projectWorld(a.$1, a.$2, a.$3),
+        b0 = p.projectWorld(b.$1, b.$2, b.$3);
+    final a1 = p.projectWorld(
+      a.$1 + inward.$1,
+      a.$2 + inward.$2,
+      a.$3 + inward.$3,
+    );
+    final b1 = p.projectWorld(
+      b.$1 + inward.$1,
+      b.$2 + inward.$2,
+      b.$3 + inward.$3,
+    );
+    final path = Path()
+      ..moveTo(a0.dx, a0.dy)
+      ..lineTo(b0.dx, b0.dy)
+      ..lineTo(b1.dx, b1.dy)
+      ..lineTo(a1.dx, a1.dy)
+      ..close();
+    final m0 = (a0 + b0) / 2, m1 = (a1 + b1) / 2;
+    // Verlaufsrichtung senkrecht zur Kante (auch bei schräger Projektion)
+    final e = b0 - a0;
+    final len2 = e.dx * e.dx + e.dy * e.dy;
+    if (len2 < 1e-6) return;
+    final v = m1 - m0;
+    final t = (v.dx * e.dx + v.dy * e.dy) / len2;
+    final end = m1 - e * t;
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = Gradient.linear(m0, end, [
+          _aoColor.withValues(alpha: alpha),
+          _aoClear,
+        ]),
+    );
+  }
+
+  /// Schattierung auf einer waagerechten Fläche entlang höherer Nachbarwände.
+  void _topOcclusion(
+    Canvas canvas,
+    IsoProjection p,
+    int x,
+    int y,
+    int h,
+    double theta,
+    List<int> heights,
+  ) {
+    const w = 0.30;
+    final (cx, cy) = IsoProjection.rotate(x - _half, y - _half, theta);
+    for (final (dx, dy) in _dirs) {
+      if (_h(heights, x + dx, y + dy) <= h) continue;
+      final (ex, ey) = IsoProjection.rotate(dx * 0.5, dy * 0.5, theta);
+      final (px, py) = IsoProjection.rotate(-dy * 0.5, dx * 0.5, theta);
+      _strip(
+        canvas,
+        p,
+        (cx + ex + px, cy + ey + py, h.toDouble()),
+        (cx + ex - px, cy + ey - py, h.toDouble()),
+        (-ex * 2 * w, -ey * 2 * w, 0),
+        0.26,
+      );
+    }
+  }
+
+  /// Schattierung am Fuss sichtbarer Seitenflächen, wo eine Fläche anschliesst.
+  void _sideOcclusion(
+    Canvas canvas,
+    IsoProjection p,
+    int x,
+    int y,
+    int z,
+    double theta,
+    List<int> heights,
+  ) {
+    const w = 0.34;
+    final (cx, cy) = IsoProjection.rotate(x - _half, y - _half, theta);
+    for (final (dx, dy) in _dirs) {
+      // nur wenn direkt am Fuss dieser Seite eine Fläche liegt
+      if (_h(heights, x + dx, y + dy) != z) continue;
+      final (ex, ey) = IsoProjection.rotate(dx * 0.5, dy * 0.5, theta);
+      if (ex - ey < 0.05) continue; // Seite zeigt von der Kamera weg
+      final (px, py) = IsoProjection.rotate(-dy * 0.5, dx * 0.5, theta);
+      _strip(
+        canvas,
+        p,
+        (cx + ex + px, cy + ey + py, z.toDouble()),
+        (cx + ex - px, cy + ey - py, z.toDouble()),
+        (0, 0, w),
+        0.22,
+      );
+    }
+  }
+
   /// Zeichnet auf die waagerechte Fläche der Zelle ([x], [y]) in Höhe [h] die
   /// Schatten aller höheren Säulen. Das Licht ist kamerafest (wie in Blender).
   void _surfaceShadow(
@@ -308,9 +471,8 @@ class TowerRenderer {
         if (dh <= 0 || (a == x && b == y)) continue;
         final (sx, sy) = IsoProjection.rotate(a - _half, b - _half, theta);
         final ddx = cx - sx, ddy = cy - sy;
-        if (ddx * ddx + ddy * ddy > (dh * reach + 1.5) * (dh * reach + 1.5)) {
-          continue;
-        }
+        final r = dh * reach + 1.5;
+        if (ddx * ddx + ddy * ddy > r * r) continue;
         final pts = <(double, double)>[];
         for (final (qx, qy) in _corners) {
           final (rx, ry) = IsoProjection.rotate(qx * 0.5, qy * 0.5, theta);
@@ -327,9 +489,8 @@ class TowerRenderer {
       }
     }
     if (shadow == null) return;
-    final clip = _surfacePath(p, x, y, h, theta, halfSize);
     canvas.save();
-    canvas.clipPath(clip);
+    canvas.clipPath(_surfacePath(p, x, y, h, theta, halfSize));
     canvas.drawPath(
       shadow,
       Paint()

@@ -6,6 +6,7 @@ import 'game/core/game_session.dart';
 import 'game/core/piece.dart';
 import 'game/flipstack_game.dart';
 import 'services/storage/stats_store.dart';
+import 'shared/theme/fs_colors.dart';
 
 // Debug-Schalter: --dart-define=FS_FPS=true       FPS-Anzeige
 //                 --dart-define=FS_AUTOPLAY=true  spielt selbst (für Tests)
@@ -14,12 +15,12 @@ const _fps = bool.fromEnvironment('FS_FPS');
 const _seed = int.fromEnvironment('FS_SEED', defaultValue: -1);
 const _autoplay = bool.fromEnvironment('FS_AUTOPLAY');
 
-const _navy = Color(0xFF202B38);
-const _cream = Color(0xFFF2EEE5);
-const _mint = Color(0xFF35B6A4);
-const _coral = Color(0xFFF27C65);
-const _amber = Color(0xFFF1BD58);
-const _muted = Color(0x99202B38);
+const _navy = FsColors.navy;
+const _cream = FsColors.cream;
+const _mint = FsColors.action;
+const _coral = FsColors.highlight;
+const _amber = FsColors.reward;
+const _muted = FsColors.textMuted;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -232,7 +233,7 @@ class _DropButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: enabled ? _mint : const Color(0xFFB9C4C0),
+      color: enabled ? _mint : FsColors.disabled,
       borderRadius: BorderRadius.circular(33),
       elevation: enabled ? 3 : 0,
       child: InkWell(

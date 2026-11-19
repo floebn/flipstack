@@ -7,18 +7,13 @@
   "cube": {
     "w": 256,
     "h": 256,
-    "colors": [
-      "mint",
-      "coral",
-      "amber",
-      "cream"
-    ],
-    "hex": [
-      "#35B6A4",
-      "#F27C65",
-      "#F1BD58",
-      "#F2EEE5"
-    ]
+    "grayLevel": 200
+  },
+  "peg": {
+    "w": 64,
+    "h": 160,
+    "centerZ": -0.23300000000000004,
+    "offset": 2.6
   },
   "tile": {
     "w": 192,
@@ -27,8 +22,8 @@
   },
   "platform": {
     "w": 1024,
-    "h": 640,
-    "targetZ": -0.3,
+    "h": 704,
+    "targetZ": -0.42,
     "frameScale": 0.5
   },
   "sunDir": [

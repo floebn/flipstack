@@ -117,3 +117,28 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 **Hinweis:** Ein früherer Autoplay-Lauf hat den Bestwert im Simulator überschrieben (vorher 1500, jetzt 3810). Das iPhone ist davon nicht betroffen.
 
 **Offen:** Ob die Regel damit für Menschen verständlich ist, muss ein weiterer Spieltest zeigen.
+
+## 19.11.2026 – Phase 3: Visuelles Produktionssystem
+
+**Umgesetzt:**
+- Einfärbbare Würfel: ein graues Sprite für alle Farben (vorher vier Atlanten). Vergleich mit echt gerenderten Würfeln vorab durchgeführt
+- Farbsystem mit 8 Blockfarben, feste Farbe je Bausteinform, Bedeutungsfarben der Oberfläche (`fs_colors.dart`)
+- Plattform überarbeitet: zurückgesetzter Fuß, runder Eckpfosten als zweite Orientierungsmarke
+- Tiefe: Verläufe in Innenecken und am Fuß von Seitenflächen, weicher Bodenschatten der Plattform
+- Vier Hintergrund-Stimmungen, prozedural gezeichnet, wechseln je Runde
+- Zentrales Blender-Projekt `assets_src/blender/flipstack.blend` mit Collections (Camera_Light, Platform, Grid, Pieces, Background, Particles_Ref, Export), Materialbibliothek und allen 13 Bausteinen; Übersichtsblatt wird mitgerendert
+- Bausteinformen werden aus dem Dart-Code nach Blender exportiert (`tool/export_pieces.dart`)
+- `docs/ART_GUIDELINES.md`
+
+**Geprüft:**
+- 41 Unit-Tests bestanden (neu: Palette und Formen in App und Blender stimmen überein), `flutter analyze` ohne Befund
+- Autoplay-Lauf im iOS-Simulator bis zum Spielende, Bilder in `docs/img/phase3_spiel.png`
+- Übersichtsblatt zweimal nachgebessert (Bausteine waren abgeschnitten bzw. überlappten)
+
+**Abweichungen vom Brief / offen:**
+- Hintergründe sind prozedural statt in Blender gerendert (Begründung in ART_GUIDELINES)
+- Blender MCP wurde nicht verwendet; alles läuft über Skripte im Hintergrundmodus
+- Keine dunklen Themen (Midnight, Neon), keine besonderen Blockmaterialien: Phase 5
+- Echte Schlagschatten auf Seitenflächen fehlen weiterhin
+- Sprites auf der Platte: 5,9 MB. Bildspeicher und Bildrate auf echten Geräten sind nicht gemessen
+- Ob 8 Farben für Menschen mit Farbsehschwäche unterscheidbar sind, ist nicht geprüft

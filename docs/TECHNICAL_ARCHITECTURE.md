@@ -1,6 +1,6 @@
 # FLIPSTACK – Technische Architektur
 
-Stand: Phase 2 · Darstellungsentscheidung in Abschnitt 6
+Stand: Phase 3 · Darstellungsentscheidung in Abschnitt 6
 
 ## 1. Stack
 
@@ -103,10 +103,10 @@ screen = project(worldX, worldY, worldZ, theta)
 
 | Schwäche | Abhilfe (Phase 1b/2) |
 |---|---|
-| Würfel werfen keine Schatten auf die **Seitenflächen** anderer Würfel | Oberseiten und Plattformfelder erhalten seit Phase 1b Schatten; Seitenflächen folgen in Phase 3 |
+| Würfel werfen keine echten Schlagschatten auf **Seitenflächen** | Seit Phase 3 erhalten Seitenflächen eine Schattierung am Fuß und Oberseiten Verläufe entlang höherer Wände. Echte Schlagschatten auf Seitenflächen gibt es weiterhin nicht |
 | ~~Bodenschatten laufen über die Plattformkante~~ | **Erledigt in Phase 1b:** Schatten werden je Feld beschnitten |
 | ~~Plattform-Sprites belegen ca. 80 MB Bildspeicher~~ | **Erledigt in Phase 2:** Drehbilder in halber Auflösung, Standbild in voller. Rechnerisch ca. 22 MB statt 79 MB; auf dem Gerät noch nicht gemessen |
-| Jeder Würfel ist ein eigener Zeichenaufruf | alle Farben in einen Atlas, dann `Canvas.drawAtlas` |
+| Jeder Würfel ist ein eigener Zeichenaufruf | Seit Phase 3 gibt es nur noch ein graues Würfel-Sprite, das eingefärbt wird (ein Atlas statt vier). Bündeln der Aufrufe bleibt offen, bis eine Messung auf dem Gerät es nötig macht |
 
 ### Rückfallweg
 
@@ -114,10 +114,11 @@ Spiellogik und `IsoProjection` hängen nicht von der Darstellung ab. Falls C1 be
 
 ### Ablauf je Bild
 
-1. Plattform-Sprite für den aktuellen Winkel zeichnen.
-2. Eck-Markierung an ihrer projizierten Position zeichnen.
-3. Bodenschatten der Säulen zeichnen.
-4. Alle Würfel mit `IsoProjection` projizieren, nach Tiefe sortieren und mit dem Winkel-Sprite zeichnen.
+1. Hintergrund (Verlauf, Rauten, Lichtschein) und Bodenschatten der Plattform.
+2. Plattform-Sprite für den aktuellen Winkel, Eckkachel und Eckpfosten (je nach Lage vor oder hinter der Plattform).
+3. Freie Plattformfelder: Schlagschatten, Eck-Schattierung, gegebenenfalls Hervorhebung.
+4. Alle Würfel mit `IsoProjection` projizieren, nach Tiefe sortieren. Je Würfel: Fugenfüllung, eingefärbtes Sprite, Schattierung der Seiten, Schatten auf der Oberseite.
+5. Höhengrenze, Staub, Punkte-Einblendungen.
 
 ## 7. Physik und Animation
 

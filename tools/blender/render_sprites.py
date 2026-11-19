@@ -2,7 +2,9 @@
 
 Aufruf: Blender -b --python tools/blender/render_sprites.py
 Ergebnis (assets/sprites/):
-  cube_<farbe>.png   Atlas 6×5, Winkel 0..87° in 3°-Schritten (90° ≡ 0° wegen Symmetrie)
+  cube.png           grauer Würfel, Atlas 6×5, Winkel 0..87° in 3°-Schritten
+                     (90° ≡ 0° wegen Symmetrie); wird im Spiel eingefärbt
+  peg.png            Eckpfosten (Orientierungsmarke)
   tile_marker.png    Atlas 6×5, Eck-Markierung
   platform_still.png Plattform bei 0° in voller Auflösung
   platform_XXX.png   Plattform ohne Markierung, 0..87°, halbe Auflösung
@@ -48,11 +50,18 @@ def render_set(prefix, ob):
         fs.render(os.path.join(TMP, f"{prefix}_{n:03d}.png"))
 
 
+# Ein einziger grauer Würfel; die Farbe entsteht zur Laufzeit durch Einfärben.
 CUBE_PX = 256
-for color in fs.CFG["cube_colors"]:
-    fresh(CUBE_PX, CUBE_PX, (0, 0, 0))
-    render_set(f"cube_{color}", fs.add_cube(color))
-    atlas(f"cube_{color}", f"cube_{color}.png")
+fresh(CUBE_PX, CUBE_PX, (0, 0, 0))
+render_set("cube", fs.add_cube("block_gray"))
+atlas("cube", "cube.png")
+
+# Eckpfosten (drehsymmetrisch, ein Bild)
+PEG_W, PEG_H = 64, 160
+lo, hi = fs.peg_bounds()
+fresh(PEG_W, PEG_H, (0, 0, (lo + hi) / 2))
+fs.add_peg()
+fs.render(os.path.join(OUT, "peg.png"))
 
 TILE_W, TILE_H = 192, 128
 fresh(TILE_W, TILE_H, (0, 0, -fs.TILE_H / 2))
@@ -62,8 +71,8 @@ t.location = (0, 0, -fs.TILE_H / 2)
 render_set("tile_marker", t)
 atlas("tile_marker", "tile_marker.png")
 
-PLAT_W, PLAT_H = 1024, 640
-PLAT_TARGET_Z = -0.3
+PLAT_W, PLAT_H = 1024, 704
+PLAT_TARGET_Z = -0.42
 fresh(PLAT_W, PLAT_H, (0, 0, PLAT_TARGET_Z))
 rig = fs.make_rig()
 fs.add_platform(rig, with_marker=False)
@@ -84,8 +93,9 @@ meta = {
     "angleStepDeg": STEP,
     "frames": len(ANGLES),
     "atlasCols": COLS,
-    "cube": {"w": CUBE_PX, "h": CUBE_PX, "colors": fs.CFG["cube_colors"],
-             "hex": [fs.CFG["colors"][c] for c in fs.CFG["cube_colors"]]},
+    "cube": {"w": CUBE_PX, "h": CUBE_PX, "grayLevel": fs.CFG["block_gray_level"]},
+    "peg": {"w": PEG_W, "h": PEG_H, "centerZ": (lo + hi) / 2,
+            "offset": fs.CFG["grid"] / 2 + fs.PEG_OFFSET},
     "tile": {"w": TILE_W, "h": TILE_H, "centerZ": -fs.TILE_H / 2},
     # Bildmitte der Plattform-Sprites entspricht Weltpunkt (0, 0, targetZ)
     "platform": {"w": PLAT_W, "h": PLAT_H, "targetZ": PLAT_TARGET_Z, "frameScale": 0.5},

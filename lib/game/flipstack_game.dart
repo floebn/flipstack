@@ -12,8 +12,10 @@ import '../services/storage/stats_store.dart';
 import 'core/game_session.dart';
 import 'core/piece.dart';
 import 'core/player_stats.dart';
+import '../shared/theme/fs_colors.dart';
 import 'core/rules.dart';
 import 'projection/iso_projection.dart';
+import 'render/background.dart';
 import 'render/sprite_set.dart';
 import 'render/tower_renderer.dart';
 
@@ -119,6 +121,8 @@ class FlipstackGame extends FlameGame {
   double safeTop = 0;
 
   late final TowerRenderer _renderer;
+  final BackgroundPainter _background = BackgroundPainter();
+  int _round = 0;
   final IsoProjection _projection = IsoProjection(origin: Offset.zero, unit: 1);
   late GameSession _session;
   PlayerStats _stats = const PlayerStats();
@@ -175,11 +179,11 @@ class FlipstackGame extends FlameGame {
   }
 
   @override
-  Color backgroundColor() => const Color(0xFFEFE6D6);
+  Color backgroundColor() => _background.theme.bottom;
 
   @override
   Future<void> onLoad() async {
-    _renderer = TowerRenderer(await SpriteSet.load());
+    _renderer = TowerRenderer(await SpriteSet.load(FsColors.blocks));
     _stats = await store.load();
     if (showFps) {
       add(
@@ -194,6 +198,9 @@ class FlipstackGame extends FlameGame {
 
   void restart() {
     _session = GameSession(seed: seed);
+    // Jede Runde eine andere Farbstimmung (später frei wählbar)
+    _background.theme =
+        BackgroundTheme.all[_round++ % BackgroundTheme.all.length];
     _result = null;
     _fromDeg = 0;
     _rotT = 1;
@@ -505,6 +512,18 @@ class FlipstackGame extends FlameGame {
     }
 
     final thetaDeg = _thetaDeg;
+    _background.render(
+      canvas,
+      size.toSize(),
+      _time,
+      _projection.projectWorld(0, 0, s.height * 0.5),
+    );
+    _renderer.renderGroundShadow(
+      canvas,
+      _projection,
+      thetaDeg,
+      const Color(0x38202B38),
+    );
     final theta = thetaDeg * math.pi / 180;
     final frame = _renderer.sprites.frameFor(thetaDeg);
     final cubes = <RenderCube>[];
@@ -536,9 +555,7 @@ class FlipstackGame extends FlameGame {
               : _nudgeIds.contains(c.pieceId)
               ? 1 - 0.035 * wobble
               : 1,
-          shadowTop: !falling && heights[c.y * n + c.x] == c.z + 1
-              ? (c.x, c.y, c.z + 1)
-              : null,
+          cell: falling ? null : (c.x, c.y, c.z),
         ),
       );
     }
@@ -613,7 +630,7 @@ class FlipstackGame extends FlameGame {
       cubes,
       thetaDeg,
       heights,
-      markerCell: (0, 0),
+      markerCorner: (-1, -1),
       highlight: lowest,
       highlightColor: Color.fromRGBO(53, 182, 164, 0.30 + 0.35 * pulse),
     );

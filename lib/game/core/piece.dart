@@ -14,7 +14,9 @@ class PieceShape {
   int get height => cells.fold(0, (m, c) => c.$3 > m ? c.$3 : m) + 1;
 }
 
-/// Alle Bausteine (Farben: 0 mint, 1 coral, 2 amber, 3 cream).
+/// Alle Bausteine. Farbindex: 0 mint, 1 coral, 2 amber, 3 cream, 4 sky,
+/// 5 plum, 6 leaf, 7 rose (siehe `FsColors.blocks`). Jede Form hat eine feste
+/// Farbe, damit sie auf einen Blick erkennbar ist.
 abstract final class PieceLibrary {
   static const single = PieceShape('single', [(0, 0, 0)], 3);
   static const domino = PieceShape('domino', [(0, 0, 0), (1, 0, 0)], 2);
@@ -29,49 +31,49 @@ abstract final class PieceLibrary {
     (1, 0, 0),
     (0, 1, 0),
     (1, 1, 0),
-  ], 2);
+  ], 4);
   static const tee = PieceShape('tee', [
     (0, 0, 0),
     (1, 0, 0),
     (2, 0, 0),
     (1, 1, 0),
-  ], 0);
+  ], 5);
 
   /// Stehender Doppelblock (zwei Würfel hoch).
-  static const pillar = PieceShape('pillar', [(0, 0, 0), (0, 0, 1)], 3);
+  static const pillar = PieceShape('pillar', [(0, 0, 0), (0, 0, 1)], 6);
   static const bar4 = PieceShape('bar4', [
     (0, 0, 0),
     (1, 0, 0),
     (2, 0, 0),
     (3, 0, 0),
-  ], 1);
+  ], 0);
   static const ell = PieceShape('ell', [
     (0, 0, 0),
     (1, 0, 0),
     (2, 0, 0),
     (0, 1, 0),
-  ], 2);
+  ], 7);
   static const jay = PieceShape('jay', [
     (0, 0, 0),
     (1, 0, 0),
     (2, 0, 0),
     (2, 1, 0),
-  ], 1);
+  ], 4);
   static const ess = PieceShape('ess', [
     (0, 0, 0),
     (1, 0, 0),
     (1, 1, 0),
     (2, 1, 0),
-  ], 0);
+  ], 1);
   static const zed = PieceShape('zed', [
     (1, 0, 0),
     (2, 0, 0),
     (0, 1, 0),
     (1, 1, 0),
-  ], 3);
+  ], 5);
 
   /// Stufe: liegender Doppelblock mit aufgesetztem Würfel.
-  static const step = PieceShape('step', [(0, 0, 0), (1, 0, 0), (1, 0, 1)], 1);
+  static const step = PieceShape('step', [(0, 0, 0), (1, 0, 0), (1, 0, 1)], 2);
 
   static const basic = [single, domino, bar3, corner, square];
   static const tier2 = [tee, pillar];

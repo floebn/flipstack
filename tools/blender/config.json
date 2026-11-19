@@ -1,14 +1,52 @@
 {
   "grid": 5,
   "ppu": 128,
-  "camera": {"tilt_deg": 54.7356103, "azimuth_deg": 45.0},
-  "sun": {"dir": [0.15, -0.75, 1.0], "strength": 3.2, "angle_deg": 18.0},
-  "ambient": {"color": "#FFF4E6", "strength": 0.55},
-  "angle_step_deg": 3,
-  "cube": {"bevel": 0.07, "segments": 3},
-  "colors": {
-    "navy": "#202B38", "cream": "#F2EEE5", "mint": "#35B6A4",
-    "coral": "#F27C65", "amber": "#F1BD58", "platform_top": "#2C3A4B"
+  "camera": {
+    "tilt_deg": 54.7356103,
+    "azimuth_deg": 45.0
   },
-  "cube_colors": ["mint", "coral", "amber", "cream"]
+  "sun": {
+    "dir": [
+      0.15,
+      -0.75,
+      1.0
+    ],
+    "strength": 3.2,
+    "angle_deg": 18.0
+  },
+  "ambient": {
+    "color": "#FFF4E6",
+    "strength": 0.55
+  },
+  "angle_step_deg": 3,
+  "cube": {
+    "bevel": 0.07,
+    "segments": 3
+  },
+  "colors": {
+    "navy": "#202B38",
+    "cream": "#F2EEE5",
+    "mint": "#35B6A4",
+    "coral": "#F27C65",
+    "amber": "#F1BD58",
+    "platform_top": "#2C3A4B",
+    "block_gray": "#C8C8C8",
+    "plinth": "#161E28",
+    "sky": "#5FA8D8",
+    "plum": "#9585CC",
+    "leaf": "#8CBF6B",
+    "rose": "#E88CA3",
+    "block_cream": "#E6DFCF"
+  },
+  "block_gray_level": 200,
+  "block_palette": [
+    "mint",
+    "coral",
+    "amber",
+    "block_cream",
+    "sky",
+    "plum",
+    "leaf",
+    "rose"
+  ]
 }
