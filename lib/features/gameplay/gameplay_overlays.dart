@@ -49,6 +49,19 @@ class GameHud extends StatelessWidget {
             top: 62,
             child: Text('NÄCHSTER', style: fsLabel),
           ),
+          if (h.notice != null)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: tutorial == null ? 150 : 296,
+              child: Center(
+                child: FsChip(
+                  h.notice!,
+                  color: FsColors.navy,
+                  textColor: Colors.white,
+                ),
+              ),
+            ),
           if (h.hint != null || h.warning != null)
             Positioned(
               left: 0,
@@ -526,9 +539,11 @@ class _BlockedInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final why = switch (r.blockCause!) {
-      BlockCause.tooUneven => 'An jeder Stelle wäre der Turm mehr als 4 Ebenen ungleich hoch geworden.',
+      BlockCause.tooUneven =>
+        'An jeder Stelle wäre der Turm mehr als ${r.maxSpread} Ebenen ungleich hoch geworden.',
       BlockCause.unsupported => 'An jeder Stelle hätte er zu wenig aufgelegen.',
-      BlockCause.both => 'Er hätte zu wenig aufgelegen oder den Turm mehr als 4 Ebenen ungleich hoch gemacht.',
+      BlockCause.both =>
+        'Er hätte zu wenig aufgelegen oder den Turm mehr als ${r.maxSpread} Ebenen ungleich hoch gemacht.',
     };
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 14, 10),

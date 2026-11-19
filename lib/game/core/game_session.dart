@@ -21,6 +21,9 @@ class PlacementScore {
     required this.layerBonus,
     required this.milestones,
     required this.milestoneBonus,
+    this.stage = 0,
+    this.stageBonus = 0,
+    this.newSpread,
   });
 
   /// 10 Punkte je Würfel.
@@ -39,7 +42,15 @@ class PlacementScore {
 
   bool get clean => cleanBonus > 0;
   int get placement => ((base + cleanBonus) * multiplier).round();
-  int get total => placement + layerBonus + milestoneBonus;
+
+  /// Erreichte Etappe (Turmhöhe 10, 20, 30 ...) oder 0.
+  final int stage;
+  final int stageBonus;
+
+  /// Mit dieser Ablage neu geltender, engerer Höhenunterschied (sonst `null`).
+  final int? newSpread;
+
+  int get total => placement + layerBonus + milestoneBonus + stageBonus;
 }
 
 /// Eine Spielrunde: reiner Zustand und Regeln, ohne Darstellung und ohne Zeit.
@@ -47,13 +58,22 @@ class PlacementScore {
 class GameSession {
   /// [shapes] legt einen festen Vorrat fest (für Tests); sonst wächst der
   /// Vorrat mit dem Fortschritt, siehe [PieceLibrary.forProgress].
-  GameSession({Rules? rules, int? seed, List<PieceShape>? shapes})
-    : rules = rules ?? const Rules(),
-      _bag = PieceBag(
-        shapes == null ? PieceLibrary.forProgress : (_) => shapes,
-        seed: seed,
-      ) {
+  /// [pool] ersetzt die Formenmischung ganz (für die Simulation).
+  GameSession({
+    Rules? rules,
+    int? seed,
+    List<PieceShape>? shapes,
+    List<PieceShape> Function(int drawn, int height)? pool,
+  }) : rules = rules ?? const Rules() {
     board = Board(this.rules.config.grid);
+    _bag = PieceBag(
+      shapes != null
+          ? (_) => shapes
+          : pool != null
+          ? (drawn) => pool(drawn, board.maxHeight)
+          : (drawn) => PieceLibrary.forProgress(drawn, height: board.maxHeight),
+      seed: seed,
+    );
     current = _bag.next();
     next = _bag.next();
     _centerPiece();
@@ -63,6 +83,10 @@ class GameSession {
   static const pointsPerLayer = 100;
   static const pointsPerMilestone = 200;
   static const milestoneEvery = 5;
+
+  /// Jeder zweite Meilenstein (Höhe 10, 20, 30 ...) ist eine Etappe.
+  static const stageEvery = 10;
+  static const pointsPerStage = 500;
   static const comboStep = 0.1;
   static const maxMultiplier = 2.0;
 
@@ -72,7 +96,7 @@ class GameSession {
       : (1 + comboStep * (combo - 1)).clamp(1.0, maxMultiplier);
 
   final Rules rules;
-  final PieceBag _bag;
+  late final PieceBag _bag;
   late final Board board;
 
   late PieceShape current;
@@ -91,7 +115,10 @@ class GameSession {
   BlockCause? blockCause;
 
   /// Höchste erlaubte Säulenhöhe nach der nächsten Ablage.
-  int get heightLimit => board.minHeight + rules.config.maxSpread;
+  int get heightLimit => board.minHeight + maxSpread;
+
+  /// Aktuell erlaubter Höhenunterschied (wird mit der Turmhöhe enger).
+  int get maxSpread => rules.config.spreadAt(board.maxHeight);
   int score = 0;
   int piecesPlaced = 0;
   int rotations = 0;
@@ -143,6 +170,7 @@ class GameSession {
     final p = placement;
     if (!p.isValid) return null;
     final id = _nextPieceId++;
+    final spreadBefore = maxSpread;
     for (final (x, y, z) in p.cells) {
       board.add(Cell(x, y, z, current.color, id));
     }
@@ -154,9 +182,18 @@ class GameSession {
     final clean = p.isFullySupported;
     combo = clean ? combo + 1 : 0;
     if (combo > bestCombo) bestCombo = combo;
+    // Meilensteine alle 5 Ebenen; jeder zweite ist eine Etappe.
     final reached = board.maxHeight ~/ milestoneEvery;
-    final milestones = reached > _milestones ? reached - _milestones : 0;
-    _milestones += milestones;
+    var milestones = 0, stage = 0;
+    for (var m = _milestones + 1; m <= reached; m++) {
+      if (m * milestoneEvery % stageEvery == 0) {
+        stage = m * milestoneEvery;
+      } else {
+        milestones++;
+      }
+    }
+    if (reached > _milestones) _milestones = reached;
+    final spreadAfter = maxSpread;
     final base = p.cells.length * pointsPerCube;
     final s = PlacementScore(
       base: base,
@@ -167,6 +204,9 @@ class GameSession {
       layerBonus: layers * pointsPerLayer,
       milestones: milestones,
       milestoneBonus: milestones * pointsPerMilestone,
+      stage: stage,
+      stageBonus: stage > 0 ? pointsPerStage : 0,
+      newSpread: spreadAfter < spreadBefore ? spreadAfter : null,
     );
     score += s.total;
     piecesPlaced++;
@@ -177,7 +217,8 @@ class GameSession {
   /// Nach der Fallanimation: nächsten Baustein holen oder Runde beenden.
   void finishPlacing() {
     if (phase != GamePhase.placing) return;
-    if (board.maxHeight >= rules.config.maxHeight) {
+    final cap = rules.config.maxHeight;
+    if (cap != null && board.maxHeight >= cap) {
       _end(GameOverReason.summit);
       return;
     }

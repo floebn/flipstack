@@ -44,19 +44,25 @@ void main() {
       expect(s.bestCombo, 2);
     });
 
-    test('Höhenmeilenstein alle 5 Ebenen gibt 200 Punkte, genau einmal', () {
-      final s = GameSession(
-        seed: 1,
-        shapes: const [PieceLibrary.square],
-        rules: const Rules(RuleConfig(grid: 2, maxHeight: 12)),
-      );
-      final bonuses = <int>[];
-      for (var i = 0; i < 10; i++) {
-        bonuses.add(s.place()!.$2.milestoneBonus);
-        s.finishPlacing();
-      }
-      expect(bonuses, [0, 0, 0, 0, 200, 0, 0, 0, 0, 200]);
-    });
+    test(
+      'Meilenstein bei 5, 15 ... gibt 200, Etappe bei 10, 20 ... gibt 500',
+      () {
+        final s = GameSession(
+          seed: 1,
+          shapes: const [PieceLibrary.square],
+          rules: const Rules(RuleConfig(grid: 2, maxHeight: 12)),
+        );
+        final bonuses = <int>[], stages = <int>[];
+        for (var i = 0; i < 10; i++) {
+          final sc = s.place()!.$2;
+          bonuses.add(sc.milestoneBonus + sc.stageBonus);
+          stages.add(sc.stage);
+          s.finishPlacing();
+        }
+        expect(bonuses, [0, 0, 0, 0, 200, 0, 0, 0, 0, 500]);
+        expect(stages, [0, 0, 0, 0, 0, 0, 0, 0, 0, 10]);
+      },
+    );
 
     test('Punktestand ist die Summe der ausgewiesenen Einzelposten', () {
       final s = GameSession(seed: 4);
@@ -68,7 +74,10 @@ void main() {
         s.orientation = r;
         s.moveTo(x, y);
         final sc = s.place()!.$2;
-        expect(sc.total, sc.placement + sc.layerBonus + sc.milestoneBonus);
+        expect(
+          sc.total,
+          sc.placement + sc.layerBonus + sc.milestoneBonus + sc.stageBonus,
+        );
         sum += sc.total;
         s.finishPlacing();
       }
@@ -152,7 +161,67 @@ void main() {
       expect(PieceLibrary.forProgress(10), contains(PieceLibrary.pillar));
       expect(PieceLibrary.forProgress(21), isNot(contains(PieceLibrary.bar4)));
       expect(PieceLibrary.forProgress(22), contains(PieceLibrary.bar4));
-      expect(PieceLibrary.forProgress(36).toSet(), PieceLibrary.all.toSet());
+      final late = PieceLibrary.forProgress(36);
+      expect(late, containsAll(PieceLibrary.tier4));
+      expect(late.where((s) => s == PieceLibrary.single).length, 2);
+      expect(late, isNot(contains(PieceLibrary.pentoP)));
+    });
+
+    test(
+      'Fünfer kommen mit der Turmhöhe, der zweite Einzelwürfel entfällt',
+      () {
+        final at20 = PieceLibrary.forProgress(100, height: 20);
+        expect(at20, containsAll(PieceLibrary.tier5));
+        expect(at20, isNot(contains(PieceLibrary.plus)));
+        expect(at20.where((s) => s == PieceLibrary.single).length, 1);
+        expect(
+          PieceLibrary.forProgress(100, height: 30).toSet(),
+          PieceLibrary.all.toSet(),
+        );
+      },
+    );
+
+    test(
+      'Höhenunterschied wird ab Höhe 10 enger, Bestehendes bleibt gültig',
+      () {
+        const cfg = RuleConfig();
+        expect(
+          (cfg.spreadAt(9), cfg.spreadAt(10), cfg.spreadAt(80)),
+          (4, 3, 3),
+        );
+        // Säule 10 hoch, Rest 6: Unterschied 4 steht schon, neu gilt 3.
+        final b = Board(5);
+        for (var i = 0; i < 25; i++) {
+          for (var z = 0; z < (i == 0 ? 10 : 6); z++) {
+            b.add(Cell(i % 5, i ~/ 5, z, 0));
+          }
+        }
+        const rules = Rules();
+        expect(
+          rules.evaluate(b, PieceLibrary.single, 0, 0, 0).isValid,
+          isFalse,
+        );
+        expect(rules.evaluate(b, PieceLibrary.square, 2, 2, 0).isValid, isTrue);
+        expect(rules.evaluate(b, PieceLibrary.pillar, 2, 2, 0).isValid, isTrue);
+        expect(rules.hasAnyValidPlacement(b, PieceLibrary.bar4), isTrue);
+      },
+    );
+
+    test('ohne Obergrenze endet die Runde nie als Gipfel', () {
+      final s = GameSession(
+        seed: 1,
+        shapes: const [PieceLibrary.square],
+        rules: const Rules(RuleConfig(grid: 2)),
+      );
+      PlacementScore? last;
+      for (var i = 0; i < 40; i++) {
+        last = s.place()!.$2;
+        s.finishPlacing();
+      }
+      expect(s.phase, GamePhase.preview);
+      expect(s.height, 40);
+      expect(last!.stage, 40);
+      expect(s.maxSpread, 3);
     });
 
     test('Anzahl verbleibender Ablagen wird für die Vorwarnung mitgeführt', () {

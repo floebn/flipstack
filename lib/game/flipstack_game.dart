@@ -9,6 +9,7 @@ import 'package:flutter/painting.dart' show TextStyle, FontWeight;
 
 import '../services/feedback/game_feedback.dart';
 import '../services/storage/stats_store.dart';
+import 'core/board.dart';
 import 'core/game_session.dart';
 import 'core/piece.dart';
 import 'core/player_stats.dart';
@@ -31,6 +32,7 @@ class RoundResult {
     required this.newBest,
     required this.stats,
     required this.seconds,
+    this.maxSpread = 4,
     this.blockCause,
     this.blockedPiece,
   });
@@ -42,6 +44,9 @@ class RoundResult {
   final int score, height, pieces, bestCombo;
   final bool newBest;
   final PlayerStats stats;
+
+  /// Zuletzt erlaubter Höhenunterschied (für die Begründung des Spielendes).
+  final int maxSpread;
 
   /// Reine Spielzeit der Runde in Sekunden (ohne Pausen).
   final int seconds;
@@ -59,6 +64,7 @@ class HudState {
     this.canDrop = true,
     this.hint,
     this.warning,
+    this.notice,
     this.result,
   });
   final int score, height, best, combo;
@@ -70,6 +76,9 @@ class HudState {
 
   /// Vorwarnung, wenn nur noch wenige Ablagen möglich sind.
   final String? warning;
+
+  /// Kurze Ansage beim Erreichen einer Etappe (was sich ab jetzt ändert).
+  final String? notice;
   final RoundResult? result;
 }
 
@@ -175,6 +184,14 @@ class FlipstackGame extends FlameGame {
 
   double _cam = 0;
   double _time = 0;
+
+  /// Etappen-Ansage und der Zeitpunkt, bis zu dem sie sichtbar bleibt.
+  String? _notice;
+  double _noticeUntil = 0;
+
+  /// Nur zum Testen: Runde beginnt mit so vielen vollen Ebenen
+  /// (`--dart-define=FS_START_HEIGHT=9`).
+  static const _startHeight = int.fromEnvironment('FS_START_HEIGHT');
   double _overT = 0;
   final List<_Popup> _popups = [];
   final List<_Dust> _dust = [];
@@ -253,7 +270,15 @@ class FlipstackGame extends FlameGame {
   void restart() {
     _menu = false;
     _playSeconds = 0;
-    _resetRound(GameSession(seed: seed));
+    final session = GameSession(seed: seed);
+    for (var z = 0; z < _startHeight; z++) {
+      for (var i = 0; i < session.grid * session.grid; i++) {
+        session.board.add(
+          Cell(i % session.grid, i ~/ session.grid, z, (i + z) % 8),
+        );
+      }
+    }
+    _resetRound(session);
     feedback.spawn();
     _publish();
   }
@@ -264,6 +289,7 @@ class FlipstackGame extends FlameGame {
     _background.theme =
         BackgroundTheme.all[_round++ % BackgroundTheme.all.length];
     _result = null;
+    _notice = null;
     _fromDeg = 0;
     _rotT = 1;
     _queuedRotation = null;
@@ -343,6 +369,10 @@ class FlipstackGame extends FlameGame {
     if (!_ready) return;
     final s = _session;
     _time += dt;
+    if (_notice != null && _time >= _noticeUntil) {
+      _notice = null;
+      _publish();
+    }
     if (_menu) {
       // Beispielturm dreht sich alle paar Sekunden um 90° (zeigt die Kernmechanik)
       _menuT += dt;
@@ -407,7 +437,11 @@ class FlipstackGame extends FlameGame {
     _fallId = -1;
     final sc = _pendingScore!;
     feedback.land();
-    if (sc.milestones > 0) {
+    if (sc.stage > 0) {
+      feedback.milestone();
+      _notice = _stageNotice(sc);
+      _noticeUntil = _time + 4.5;
+    } else if (sc.milestones > 0) {
       feedback.milestone();
     } else if (sc.layers > 0) {
       feedback.layer();
@@ -437,6 +471,7 @@ class FlipstackGame extends FlameGame {
         newBest: newBest,
         stats: _stats,
         seconds: _playSeconds.round(),
+        maxSpread: s.maxSpread,
         blockCause: s.blockCause,
         blockedPiece: s.blockCause == null ? null : s.current,
       );
@@ -450,6 +485,19 @@ class FlipstackGame extends FlameGame {
     onEvent?.call(GameEvent.placed);
     _publish();
     _runQueuedRotation();
+  }
+
+  /// Was sich mit der erreichten Etappe ändert.
+  String _stageNotice(PlacementScore sc) {
+    final big = PieceLibrary.bigPiecesFromHeight;
+    final change = sc.newSpread != null
+        ? 'Ab jetzt höchstens ${sc.newSpread} Ebenen Unterschied'
+        : sc.stage == big[0]
+        ? 'Bald kommen Formen aus fünf Würfeln'
+        : sc.stage == big[1]
+        ? 'Bald kommen noch sperrigere Formen'
+        : 'Weiter so';
+    return 'Etappe ${sc.stage} · $change';
   }
 
   void _spawnEffects(PlacementScore sc) {
@@ -475,6 +523,9 @@ class FlipstackGame extends FlameGame {
     if (sc.layers > 0) pop('Ebene voll  +${sc.layerBonus}', accent: true);
     if (sc.milestones > 0) {
       pop('Höhe ${_session.height}  +${sc.milestoneBonus}', accent: true);
+    }
+    if (sc.stage > 0) {
+      pop('Etappe ${sc.stage}  +${sc.stageBonus}', accent: true);
     }
 
     // Staub am Fuss des Bausteins
@@ -562,6 +613,7 @@ class FlipstackGame extends FlameGame {
                 ? 'Nur noch 1 Platz'
                 : 'Nur noch ${s.placementsLeft} Plätze')
           : null,
+      notice: _time < _noticeUntil ? _notice : null,
       result: _overT >= 1 ? _result : null,
     );
   }
@@ -697,7 +749,7 @@ class FlipstackGame extends FlameGame {
     // Höhenregel sichtbar machen: Sobald der Turm ungleichmäßig wird, zeigt ein
     // Rahmen die höchste erlaubte Bauhöhe, und die tiefsten Felder pulsieren.
     final spread = s.height - s.board.minHeight;
-    final maxSpread = s.rules.config.maxSpread;
+    final maxSpread = s.maxSpread;
     final blockedByHeight =
         s.phase == GamePhase.preview &&
         s.placement.error == PlacementError.tooUneven;

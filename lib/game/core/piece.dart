@@ -75,22 +75,72 @@ abstract final class PieceLibrary {
   /// Stufe: liegender Doppelblock mit aufgesetztem Würfel.
   static const step = PieceShape('step', [(0, 0, 0), (1, 0, 0), (1, 0, 1)], 2);
 
+  // Formen aus fünf Würfeln, kommen erst in grosser Höhe dazu.
+  static const pentoP = PieceShape('pento_p', [
+    (0, 0, 0),
+    (1, 0, 0),
+    (0, 1, 0),
+    (1, 1, 0),
+    (0, 2, 0),
+  ], 6);
+  static const pentoU = PieceShape('pento_u', [
+    (0, 0, 0),
+    (2, 0, 0),
+    (0, 1, 0),
+    (1, 1, 0),
+    (2, 1, 0),
+  ], 3);
+  static const plus = PieceShape('plus', [
+    (1, 0, 0),
+    (0, 1, 0),
+    (1, 1, 0),
+    (2, 1, 0),
+    (1, 2, 0),
+  ], 7);
+  static const hook = PieceShape('hook', [
+    (0, 0, 0),
+    (1, 0, 0),
+    (2, 0, 0),
+    (3, 0, 0),
+    (0, 1, 0),
+  ], 2);
+
   static const basic = [single, domino, bar3, corner, square];
   static const tier2 = [tee, pillar];
   static const tier3 = [bar4, ell, jay];
   static const tier4 = [ess, zed, step];
-  static const all = [...basic, ...tier2, ...tier3, ...tier4];
+  static const tier5 = [pentoP, hook];
+  static const tier6 = [pentoU, plus];
+  static const all = [
+    ...basic,
+    ...tier2,
+    ...tier3,
+    ...tier4,
+    ...tier5,
+    ...tier6,
+  ];
 
   /// Schwellen (Anzahl bereits gezogener Bausteine), ab denen neue Formen dazukommen.
   static const tierStarts = [0, 10, 22, 36];
 
+  /// Turmhöhen, ab denen die Formen aus fünf Würfeln dazukommen
+  /// ([tier5], dann [tier6]).
+  static const bigPiecesFromHeight = [20, 30];
+
   /// Formen eines Beutels abhängig vom Fortschritt. Die Schwierigkeit steigt
-  /// über die Formenmischung, nicht über Zeitdruck. In der letzten Stufe ist
-  /// der Einzelwürfel als Lückenfüller doppelt im Beutel.
-  static List<PieceShape> forProgress(int drawn) => [
-    ...basic,
-    if (drawn >= tierStarts[1]) ...tier2,
-    if (drawn >= tierStarts[2]) ...tier3,
-    if (drawn >= tierStarts[3]) ...[...tier4, single],
-  ];
+  /// über die Formenmischung, nicht über Zeitdruck. In der vierten Stufe ist
+  /// der Einzelwürfel als Lückenfüller doppelt im Beutel. Mit den ersten
+  /// Fünfern entfällt der zweite Einzelwürfel wieder.
+  static List<PieceShape> forProgress(int drawn, {int height = 0}) {
+    final big = height >= bigPiecesFromHeight[0];
+    return [
+      ...basic,
+      if (drawn >= tierStarts[1]) ...tier2,
+      if (drawn >= tierStarts[2]) ...tier3,
+      if (drawn >= tierStarts[3]) ...tier4,
+      if (drawn >= tierStarts[3] && !big) single,
+      if (big) ...tier5,
+      if (height >= bigPiecesFromHeight[1]) ...tier6,
+    ];
+  }
 }

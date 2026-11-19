@@ -184,3 +184,13 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 **Geprüft:** Im iOS-Simulator meldet das Protokoll „audio: bereit (20 Klänge)“; bei Tippen, Drehen und Ablegen keine Fehlermeldung. **Gehört habe ich weiterhin nichts**, der Nachweis am Gerät steht aus.
 
 **Hinweis:** Ist das iPhone stummgeschaltet, bleibt das Spiel absichtlich still.
+
+## Endlosspiel mit Etappen (19.11.2026, vor Phase 5)
+
+- Obergrenze bei Höhe 30 entfernt. Etappen bei 10, 20, 30 … mit +500 und Ansage.
+- Höhenunterschied 3 ab Höhe 10. Die Regel prüft jetzt nur den abgelegten Baustein gegen das tiefste Feld; bei gleichbleibendem Wert ist das dasselbe wie vorher.
+- Vier Formen aus fünf Würfeln, je zwei ab Höhe 20 und 30.
+- Neue Bots in `tool/balance_sim.dart` (Flächenbot, Planer). Unterschied 2 ab Höhe 30 simuliert und verworfen. Zahlen in `GAME_DESIGN.md`, Abschnitt 1a.
+- Testschalter `--dart-define=FS_START_HEIGHT=n` startet mit n vollen Ebenen.
+- Geprüft: 52 Tests, `flutter analyze` ohne Befund, im iOS-Simulator die Ansagen bei Etappe 10 und 20 und ein Spielende mit einem Fünfer.
+- Nicht geprüft: Spielgefühl und Rundenlänge mit Menschen, Darstellung von U-Form und Kreuz im Spiel, die Blender-Übersicht der Bausteine (nicht neu gerendert).

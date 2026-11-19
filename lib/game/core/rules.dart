@@ -8,7 +8,8 @@ class RuleConfig {
     this.grid = 5,
     this.minSupport = 0.5,
     this.maxSpread = 4,
-    this.maxHeight = 30,
+    this.tightening = const [(10, 3)],
+    this.maxHeight,
   });
 
   final int grid;
@@ -16,12 +17,28 @@ class RuleConfig {
   /// Anteil der Säulen eines Bausteins, die beim Landen aufliegen müssen.
   final double minSupport;
 
-  /// Grösster erlaubter Höhenunterschied zwischen höchster und niedrigster
-  /// Säule nach dem Ablegen ("der Turm muss gleichmässig wachsen").
+  /// Grösster erlaubter Höhenunterschied am Anfang der Runde: Ein abgelegter
+  /// Baustein darf höchstens so weit über die niedrigste Säule ragen
+  /// ("der Turm muss gleichmässig wachsen").
   final int maxSpread;
 
-  /// Erreicht der Turm diese Höhe, endet die Runde als Erfolg.
-  final int maxHeight;
+  /// Verschärfungen als (Turmhöhe, Höhenunterschied), aufsteigend nach Höhe.
+  /// Ab der genannten Turmhöhe gilt der engere Wert für neu abgelegte
+  /// Bausteine. Was schon steht, bleibt gültig.
+  final List<(int, int)> tightening;
+
+  /// Optionale Obergrenze: Erreicht der Turm diese Höhe, endet die Runde als
+  /// Erfolg. `null` = Endlosspiel.
+  final int? maxHeight;
+
+  /// Erlaubter Höhenunterschied bei Turmhöhe [towerHeight].
+  int spreadAt(int towerHeight) {
+    var s = maxSpread;
+    for (final (h, v) in tightening) {
+      if (towerHeight >= h && v < s) s = v;
+    }
+    return s;
+  }
 }
 
 enum PlacementError { none, outOfBounds, unsupported, tooUneven }
@@ -58,9 +75,22 @@ class Rules {
 
   /// Prüft das Ablegen von [shape] mit Ankerzelle ([wx], [wy]) im Weltraster
   /// bei Orientierung [r]. Der Baustein fällt senkrecht, bis eine Zelle aufliegt.
-  Placement evaluate(Board board, PieceShape shape, int wx, int wy, int r) {
-    final n = board.n;
-    final lowest = <int, int>{}; // Säule -> unterste dz des Bausteins
+  Placement evaluate(Board board, PieceShape shape, int wx, int wy, int r) =>
+      evaluateOn(board.heights, board.n, shape, wx, wy, r);
+
+  /// Wie [evaluate], aber nur auf den Säulenhöhen ([heights], Index y * n + x).
+  /// Die Regeln hängen ausschliesslich von den Säulenhöhen ab.
+  Placement evaluateOn(
+    List<int> heights,
+    int n,
+    PieceShape shape,
+    int wx,
+    int wy,
+    int r,
+  ) {
+    final cols = <int>[]; // Säulen des Bausteins
+    final low = <int>[]; // unterste dz je Säule
+    final high = <int>[]; // oberste dz je Säule
     final mapped = <(int, int, int)>[];
     for (final (dx, dy, dz) in shape.cells) {
       final x = wx + dx, y = wy + dy;
@@ -70,38 +100,45 @@ class Rules {
       final (px, py) = Orientation.worldToPlatform(x, y, r, n);
       mapped.add((px, py, dz));
       final k = py * n + px;
-      final cur = lowest[k];
-      if (cur == null || dz < cur) lowest[k] = dz;
+      final i = cols.indexOf(k);
+      if (i < 0) {
+        cols.add(k);
+        low.add(dz);
+        high.add(dz);
+      } else {
+        if (dz < low[i]) low[i] = dz;
+        if (dz > high[i]) high[i] = dz;
+      }
     }
     var z0 = 0;
-    lowest.forEach((k, dz) {
-      final rest = board.heightAt(k % n, k ~/ n) - dz;
+    for (var i = 0; i < cols.length; i++) {
+      final rest = heights[cols[i]] - low[i];
       if (rest > z0) z0 = rest;
-    });
+    }
     var supported = 0;
-    lowest.forEach((k, dz) {
-      if (board.heightAt(k % n, k ~/ n) - dz == z0) supported++;
-    });
+    for (var i = 0; i < cols.length; i++) {
+      if (heights[cols[i]] - low[i] == z0) supported++;
+    }
     final cells = [for (final (x, y, dz) in mapped) (x, y, z0 + dz)];
     var error = PlacementError.none;
-    if (supported / lowest.length < config.minSupport) {
+    if (supported / cols.length < config.minSupport) {
       error = PlacementError.unsupported;
     } else {
-      // Höhenunterschied nach dem Ablegen
-      final top = <int, int>{};
-      for (final (x, y, z) in cells) {
-        final k = y * n + x;
-        if (z + 1 > (top[k] ?? 0)) top[k] = z + 1;
-      }
-      var lo = 1 << 30, hi = 0;
-      for (var k = 0; k < n * n; k++) {
-        final h = top[k] ?? board.heightAt(k % n, k ~/ n);
+      // Der Baustein darf nicht zu weit über die niedrigste Säule ragen.
+      var top = 0, tower = 0, lo = 1 << 30;
+      for (var k = 0; k < heights.length; k++) {
+        var h = heights[k];
+        if (h > tower) tower = h;
+        final i = cols.indexOf(k);
+        if (i >= 0) {
+          h = z0 + high[i] + 1;
+          if (h > top) top = h;
+        }
         if (h < lo) lo = h;
-        if (h > hi) hi = h;
       }
-      if (hi - lo > config.maxSpread) error = PlacementError.tooUneven;
+      if (top - lo > config.spreadAt(tower)) error = PlacementError.tooUneven;
     }
-    return Placement(error, z0, cells, supported, lowest.length);
+    return Placement(error, z0, cells, supported, cols.length);
   }
 
   /// Alle gültigen Ablagen als (wx, wy, r). Leer = Spielende.

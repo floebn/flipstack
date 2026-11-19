@@ -21,6 +21,9 @@ class Board {
   /// Höhe der Säule = höchster belegter Platz + 1 (0 = leer).
   int heightAt(int x, int y) => _heights[y * n + x];
 
+  /// Alle Säulenhöhen (Index y * n + x). Nur lesen.
+  List<int> get heights => _heights;
+
   bool isOccupied(int x, int y, int z) => _occupied.contains(_key(x, y, z));
 
   int get maxHeight => _heights.reduce((a, b) => a > b ? a : b);
