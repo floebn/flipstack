@@ -101,3 +101,19 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Pause-Knopf und Wiederaufnahme einer Runde nach App-Neustart (Phase 4)
 - Schatten auf Seitenflächen (Phase 3)
 - Bei hohen Türmen liegt der Sockel während des Spiels hinter den Knöpfen
+
+## 19.11.2026 – Spielende verständlich machen (nach Spieltest)
+
+**Anlass:** Der Nutzer erreichte auf einem echten iPhone 4392 Punkte (77 Steine, Höhe 12) und konnte nicht erkennen, warum „Kein Platz mehr“ erschien.
+
+**Umgesetzt:**
+- Logik ermittelt, woran der letzte Stein scheitert (`Rules.blockers`, `GameSession.blockCause`)
+- Rahmen zeigt die Höhengrenze, die tiefsten Felder pulsieren, Hinweistext umformuliert
+- Ergebnis zeigt den gescheiterten Stein mit Begründung; die Kamera lässt Platz für die höhere Karte
+- Autoplay-Testläufe schreiben nicht mehr in die gespeicherte Statistik
+
+**Geprüft:** 38 Unit-Tests bestanden, Autoplay-Lauf im iOS-Simulator bis zum Spielende, Bild in `docs/img/phase2_spielende_erklaert.png`.
+
+**Hinweis:** Ein früherer Autoplay-Lauf hat den Bestwert im Simulator überschrieben (vorher 1500, jetzt 3810). Das iPhone ist davon nicht betroffen.
+
+**Offen:** Ob die Regel damit für Menschen verständlich ist, muss ein weiterer Spieltest zeigen.

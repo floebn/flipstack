@@ -40,6 +40,14 @@ Bei rund 3–4 Sekunden je Zug entsprechen 57 Steine etwa 3 Minuten. Das trifft 
 - Faire Zufallsfolge („Beutel“-System, seedbar): Jede Form des aktuellen Vorrats kommt einmal vor, bevor sich eine wiederholt.
 - **Vorwarnung:** Bleiben weniger als 4 gültige Ablagen (über alle Positionen und Orientierungen), zeigt das Spiel „Nur noch N Plätze“.
 
+## 2a. Wie das Spiel die Regeln zeigt
+
+Ein Spieltest am 19.11.2026 ergab: Nach 77 Steinen war nicht erkennbar, warum die Runde endete. Die Höhenregel war unsichtbar. Seitdem gilt:
+
+- **Höhengrenze:** Sobald der Turm ungleichmäßig wird (Unterschied ab 3 Ebenen), zeigt ein Rahmen um den Turm die höchste erlaubte Bauhöhe. Er wird rot, wenn die aktuelle Position daran scheitert.
+- **Tiefste Felder:** Gleichzeitig pulsieren die niedrigsten Felder. Der Hinweis lautet „Zu hoch – erst die markierten Felder füllen“.
+- **Spielende:** Der Stein, der nirgends passte, bleibt kurz rot über dem Turm sichtbar. Das Ergebnis zeigt ihn mit Begründung (zu wenig Auflage, Höhenunterschied oder beides).
+
 ## 3. Punkte (transparent, in `GameSession.place`)
 
 | Ereignis | Punkte |
@@ -62,7 +70,7 @@ Bestwert, größte Höhe, gespielte Runden, Durchschnittspunkte, beste Combo, Ge
 
 ## 4. Offene Fragen für den Spieltest
 
-- Ist die Regel „gleichmäßig bauen“ ohne Erklärung verständlich? Derzeit erscheint nur der Hinweis „Turm wird zu ungleichmäßig“.
+- Ist die Regel „gleichmäßig bauen“ mit Rahmen und markierten Feldern jetzt verständlich?
 - Fühlt sich das Spielende fair an, oder kommt es trotz Vorwarnung überraschend?
 - Ist die Combo-Kurve motivierend, oder wirkt ×2,0 als Obergrenze zu niedrig?
 - Spielfeld 5×5 oder 4×4, Vorschau auf 1 oder 2 Steine.

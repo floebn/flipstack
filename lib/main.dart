@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'game/core/game_session.dart';
+import 'game/core/piece.dart';
 import 'game/flipstack_game.dart';
 import 'services/storage/stats_store.dart';
 
@@ -37,7 +38,8 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   late final FlipstackGame _game = FlipstackGame(
-    store: LocalStatsStore(),
+    // Testläufe mit Autoplay verändern die gespeicherte Statistik nicht.
+    store: _autoplay ? MemoryStatsStore() : LocalStatsStore(),
     showFps: _fps,
     seed: _seed < 0 ? null : _seed,
     autoplay: _autoplay,
@@ -119,7 +121,8 @@ class _GameScreenState extends State<GameScreen> {
                       ],
                     ),
                   ),
-                  if (over) _GameOver(h.result!, onRestart: _game.restart),
+                  if (over)
+                    _GameOver(h.result!, game: _game, onRestart: _game.restart),
                 ],
               );
             },
@@ -257,8 +260,9 @@ class _DropButton extends StatelessWidget {
 /// Ergebnis der Runde. Liegt im unteren Bildschirmdrittel, damit der fertige
 /// Turm darüber sichtbar bleibt.
 class _GameOver extends StatelessWidget {
-  const _GameOver(this.r, {required this.onRestart});
+  const _GameOver(this.r, {required this.game, required this.onRestart});
   final RoundResult r;
+  final FlipstackGame game;
   final VoidCallback onRestart;
 
   @override
@@ -320,6 +324,10 @@ class _GameOver extends StatelessWidget {
                       fontSize: 14,
                     ),
                   ),
+                  if (r.blockedPiece != null) ...[
+                    const SizedBox(height: 14),
+                    _BlockedInfo(r, game),
+                  ],
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -381,4 +389,71 @@ class _Stat extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Erklärt das Spielende: zeigt den Baustein, der nirgends passte, und warum.
+class _BlockedInfo extends StatelessWidget {
+  const _BlockedInfo(this.r, this.game);
+  final RoundResult r;
+  final FlipstackGame game;
+
+  @override
+  Widget build(BuildContext context) {
+    final why = switch (r.blockCause!) {
+      BlockCause.tooUneven => 'An jeder Stelle wäre der Turm mehr als 4 Ebenen ungleich hoch geworden.',
+      BlockCause.unsupported => 'An jeder Stelle hätte er zu wenig aufgelegen.',
+      BlockCause.both => 'Er hätte zu wenig aufgelegen oder den Turm mehr als 4 Ebenen ungleich hoch gemacht.',
+    };
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 14, 10),
+      decoration: BoxDecoration(
+        color: const Color(0x14202B38),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 74,
+            height: 58,
+            child: CustomPaint(painter: _PiecePainter(game, r.blockedPiece!)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  const TextSpan(
+                    text: 'Dieser Stein passte nirgends. ',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  TextSpan(text: why),
+                ],
+              ),
+              style: const TextStyle(fontSize: 13, height: 1.3, color: _navy),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PiecePainter extends CustomPainter {
+  _PiecePainter(this.game, this.shape);
+  final FlipstackGame game;
+  final PieceShape shape;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final span = shape.width + shape.depth;
+    game.paintPiece(
+      canvas,
+      shape,
+      size.center(Offset.zero),
+      (size.width / (span * 0.75)).clamp(8, 17),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_PiecePainter old) => old.shape != shape;
 }

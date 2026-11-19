@@ -10,6 +10,7 @@ import 'package:flutter/services.dart' show HapticFeedback;
 
 import '../services/storage/stats_store.dart';
 import 'core/game_session.dart';
+import 'core/piece.dart';
 import 'core/player_stats.dart';
 import 'core/rules.dart';
 import 'projection/iso_projection.dart';
@@ -27,7 +28,13 @@ class RoundResult {
     required this.bestCombo,
     required this.newBest,
     required this.stats,
+    this.blockCause,
+    this.blockedPiece,
   });
+
+  /// Bei "kein Platz mehr": der Baustein, der nirgends passte, und warum.
+  final BlockCause? blockCause;
+  final PieceShape? blockedPiece;
   final GameOverReason reason;
   final int score, height, pieces, bestCombo;
   final bool newBest;
@@ -139,6 +146,7 @@ class FlipstackGame extends FlameGame {
   List<(int, int, int)> _landedCells = const [];
 
   double _cam = 0;
+  double _time = 0;
   double _overT = 0;
   final List<_Popup> _popups = [];
   final List<_Dust> _dust = [];
@@ -263,6 +271,7 @@ class FlipstackGame extends FlameGame {
     super.update(dt);
     if (!_ready) return;
     final s = _session;
+    _time += dt;
 
     if (s.phase == GamePhase.rotating) {
       _rotT += dt / rotationSeconds;
@@ -337,6 +346,8 @@ class FlipstackGame extends FlameGame {
         bestCombo: s.bestCombo,
         newBest: newBest,
         stats: _stats,
+        blockCause: s.blockCause,
+        blockedPiece: s.blockCause == null ? null : s.current,
       );
       _overT = 0;
       HapticFeedback.heavyImpact();
@@ -449,7 +460,8 @@ class FlipstackGame extends FlameGame {
           ? null
           : switch (p.error) {
               PlacementError.unsupported => 'Liegt zu wenig auf',
-              PlacementError.tooUneven => 'Turm wird zu ungleichmäßig',
+              PlacementError.tooUneven =>
+                'Zu hoch – erst die markierten Felder füllen',
               _ => null,
             },
       warning: preview && s.placementsLeft < warnBelow
@@ -459,6 +471,11 @@ class FlipstackGame extends FlameGame {
           : null,
       result: _overT >= 1 ? _result : null,
     );
+  }
+
+  /// Für die Oberfläche: zeichnet einen Baustein (z. B. im Ergebnis).
+  void paintPiece(Canvas canvas, PieceShape shape, Offset center, double unit) {
+    if (_ready) _renderer.renderPiece(canvas, shape, center, unit);
   }
 
   // ------------------------------------------------------------ Darstellung
@@ -478,9 +495,10 @@ class FlipstackGame extends FlameGame {
     if (over > 0) {
       final needed =
           s.height * 0.8165 + 5.2; // Turmhöhe + Plattformtiefe (Welteinheiten)
-      final fitUnit = math.min(playUnit, size.y * 0.50 / needed);
+      final fitUnit = math.min(playUnit, size.y * 0.40 / needed);
       _projection.unit = playUnit + (fitUnit - playUnit) * over;
-      final fitY = size.y * 0.10 + (s.height * 0.8165 + 2.2) * fitUnit;
+      final fitY =
+          safeTop + size.y * 0.03 + (s.height * 0.8165 + 2.2) * fitUnit;
       _projection.origin = Offset(size.x / 2, playY + (fitY - playY) * over);
     } else {
       _projection.origin = Offset(size.x / 2, playY);
@@ -525,7 +543,11 @@ class FlipstackGame extends FlameGame {
       );
     }
 
-    if (s.phase == GamePhase.preview || s.phase == GamePhase.rotating) {
+    final blocked =
+        s.phase == GamePhase.gameOver && s.blockCause != null && _overT < 1;
+    if (s.phase == GamePhase.preview ||
+        s.phase == GamePhase.rotating ||
+        blocked) {
       // Vorschau der Landeposition (nicht während der Drehung)
       if (s.phase == GamePhase.preview) {
         final p = s.placement;
@@ -559,9 +581,29 @@ class FlipstackGame extends FlameGame {
             z: _hz + dz + 0.5 + (1 - appear) * 0.8,
             color: s.current.color,
             frame: 0,
-            opacity: _spawnT.clamp(0, 1),
+            opacity: blocked ? (1 - _overT * _overT) : _spawnT.clamp(0, 1),
+            invalid: blocked,
           ),
         );
+      }
+    }
+
+    // Höhenregel sichtbar machen: Sobald der Turm ungleichmäßig wird, zeigt ein
+    // Rahmen die höchste erlaubte Bauhöhe, und die tiefsten Felder pulsieren.
+    final spread = s.height - s.board.minHeight;
+    final maxSpread = s.rules.config.maxSpread;
+    final blockedByHeight =
+        s.phase == GamePhase.preview &&
+        s.placement.error == PlacementError.tooUneven;
+    final showGuide =
+        s.phase != GamePhase.gameOver &&
+        (spread >= maxSpread - 1 || blockedByHeight);
+    final pulse = 0.5 + 0.5 * math.sin(_time * 5);
+    final lowest = <int>{};
+    if (showGuide) {
+      final lo = s.board.minHeight;
+      for (var i = 0; i < n * n; i++) {
+        if (s.board.heightAt(i % n, i ~/ n) == lo) lowest.add(i);
       }
     }
 
@@ -572,7 +614,21 @@ class FlipstackGame extends FlameGame {
       thetaDeg,
       heights,
       markerCell: (0, 0),
+      highlight: lowest,
+      highlightColor: Color.fromRGBO(53, 182, 164, 0.30 + 0.35 * pulse),
     );
+
+    if (showGuide) {
+      _renderer.renderLimitFrame(
+        canvas,
+        _projection,
+        s.heightLimit.toDouble(),
+        thetaDeg,
+        blockedByHeight
+            ? Color.fromRGBO(229, 72, 77, 0.65 + 0.35 * pulse)
+            : const Color(0xB3F1BD58),
+      );
+    }
 
     for (final d in _dust) {
       final (wx, wy) = IsoProjection.rotate(d.wx, d.wy, theta);

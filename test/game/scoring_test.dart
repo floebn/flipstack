@@ -93,6 +93,59 @@ void main() {
     });
   });
 
+  group('Ursache des Spielendes', () {
+    Board tower(int h) {
+      final b = Board(5);
+      for (var z = 0; z < h; z++) {
+        b.add(Cell(0, 0, z, 0));
+      }
+      return b;
+    }
+
+    test('Höhengrenze = niedrigste Säule + 4', () {
+      final s = GameSession(seed: 1);
+      expect(s.heightLimit, 4);
+    });
+
+    test('scheitert nur am Höhenunterschied', () {
+      // Ein 4er-Turm in der Ecke, sonst leer: Der Einzelwürfel passt überall
+      // ausser auf den Turm, und dort scheitert er an der Höhe.
+      final b = const Rules().blockers(tower(4), PieceLibrary.single);
+      expect(b.unsupported, 0);
+      expect(
+        b.tooUneven,
+        4,
+        reason: 'dieselbe Zelle in allen vier Orientierungen',
+      );
+    });
+
+    test('scheitert an zu wenig Auflage', () {
+      final b = const Rules().blockers(tower(1), PieceLibrary.bar4);
+      expect(b.unsupported, greaterThan(0));
+      expect(b.tooUneven, 0);
+    });
+
+    test('nach "kein Platz mehr" ist die Ursache gesetzt und plausibel', () {
+      for (final seed in [1, 2, 3, 4, 5, 6]) {
+        final s = GameSession(seed: seed);
+        final rng = math.Random(seed);
+        while (s.phase != GamePhase.gameOver) {
+          final o = s.rules.validPlacements(s.board, s.current);
+          final (x, y, r) = o[rng.nextInt(o.length)];
+          s.orientation = r;
+          s.moveTo(x, y);
+          s.place();
+          s.finishPlacing();
+        }
+        final b = s.rules.blockers(s.board, s.current);
+        expect(s.blockCause, isNotNull);
+        expect(b.unsupported + b.tooUneven, greaterThan(0));
+        if (s.blockCause == BlockCause.tooUneven) expect(b.unsupported, 0);
+        if (s.blockCause == BlockCause.unsupported) expect(b.tooUneven, 0);
+      }
+    });
+  });
+
   group('Fortschritt und Statistik', () {
     test('neue Formen kommen stufenweise dazu', () {
       expect(PieceLibrary.forProgress(0), PieceLibrary.basic);

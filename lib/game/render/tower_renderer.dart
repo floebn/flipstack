@@ -67,6 +67,8 @@ class TowerRenderer {
     double thetaDeg,
     List<int> heights, {
     (int, int)? markerCell,
+    Set<int> highlight = const {},
+    Color highlightColor = const Color(0x00000000),
   }) {
     final theta = thetaDeg * math.pi / 180;
     final frame = sprites.frameFor(thetaDeg);
@@ -104,6 +106,12 @@ class TowerRenderer {
       for (var x = 0; x < grid; x++) {
         if (heights[y * grid + x] == 0) {
           _surfaceShadow(canvas, p, x, y, 0, theta, heights, 0.5);
+          if (highlight.contains(y * grid + x)) {
+            canvas.drawPath(
+              _surfacePath(p, x, y, 0, theta, 0.46),
+              Paint()..color = highlightColor,
+            );
+          }
         }
       }
     }
@@ -140,6 +148,12 @@ class TowerRenderer {
       final t = c.shadowTop;
       if (t != null) {
         _surfaceShadow(canvas, p, t.$1, t.$2, t.$3, theta, heights, 0.47);
+        if (highlight.contains(t.$2 * grid + t.$1)) {
+          canvas.drawPath(
+            _surfacePath(p, t.$1, t.$2, t.$3, theta, 0.44),
+            Paint()..color = highlightColor,
+          );
+        }
       }
     }
   }
@@ -216,6 +230,60 @@ class TowerRenderer {
     );
   }
 
+  /// Umriss der waagerechten Fläche der Zelle ([x], [y]) in Höhe [h].
+  Path _surfacePath(
+    IsoProjection p,
+    int x,
+    int y,
+    int h,
+    double theta,
+    double halfSize,
+  ) {
+    final (cx, cy) = IsoProjection.rotate(x - _half, y - _half, theta);
+    final path = Path();
+    for (var i = 0; i < 4; i++) {
+      final (rx, ry) = IsoProjection.rotate(
+        _corners[i].$1 * halfSize,
+        _corners[i].$2 * halfSize,
+        theta,
+      );
+      final o = p.projectWorld(cx + rx, cy + ry, h.toDouble());
+      i == 0 ? path.moveTo(o.dx, o.dy) : path.lineTo(o.dx, o.dy);
+    }
+    return path..close();
+  }
+
+  /// Rahmen um den Plattformgrundriss in Höhe [z] (zeigt die Bauhöhen-Grenze).
+  void renderLimitFrame(
+    Canvas canvas,
+    IsoProjection p,
+    double z,
+    double thetaDeg,
+    Color color,
+  ) {
+    final theta = thetaDeg * math.pi / 180;
+    final half = grid / 2 + 0.06;
+    final path = Path();
+    for (var i = 0; i < 4; i++) {
+      final (rx, ry) = IsoProjection.rotate(
+        _corners[i].$1 * half,
+        _corners[i].$2 * half,
+        theta,
+      );
+      final o = p.projectWorld(rx, ry, z);
+      i == 0 ? path.moveTo(o.dx, o.dy) : path.lineTo(o.dx, o.dy);
+    }
+    path.close();
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(1.5, p.unit * 0.045)
+        ..strokeJoin = StrokeJoin.round
+        ..color = color,
+    );
+  }
+
   /// Zeichnet auf die waagerechte Fläche der Zelle ([x], [y]) in Höhe [h] die
   /// Schatten aller höheren Säulen. Das Licht ist kamerafest (wie in Blender).
   void _surfaceShadow(
@@ -259,17 +327,7 @@ class TowerRenderer {
       }
     }
     if (shadow == null) return;
-    final clip = Path();
-    for (var i = 0; i < 4; i++) {
-      final (rx, ry) = IsoProjection.rotate(
-        _corners[i].$1 * halfSize,
-        _corners[i].$2 * halfSize,
-        theta,
-      );
-      final o = p.projectWorld(cx + rx, cy + ry, h.toDouble());
-      i == 0 ? clip.moveTo(o.dx, o.dy) : clip.lineTo(o.dx, o.dy);
-    }
-    clip.close();
+    final clip = _surfacePath(p, x, y, h, theta, halfSize);
     canvas.save();
     canvas.clipPath(clip);
     canvas.drawPath(

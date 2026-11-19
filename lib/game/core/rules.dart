@@ -118,6 +118,27 @@ class Rules {
     return out;
   }
 
+  /// Warum [shape] nirgends passt: Anzahl der Positionen (über alle vier
+  /// Orientierungen), die an zu wenig Auflage bzw. am Höhenunterschied scheitern.
+  ({int unsupported, int tooUneven}) blockers(Board board, PieceShape shape) {
+    var unsupported = 0, tooUneven = 0;
+    final n = board.n;
+    for (var r = 0; r < 4; r++) {
+      for (var wy = 0; wy <= n - shape.depth; wy++) {
+        for (var wx = 0; wx <= n - shape.width; wx++) {
+          switch (evaluate(board, shape, wx, wy, r).error) {
+            case PlacementError.unsupported:
+              unsupported++;
+            case PlacementError.tooUneven:
+              tooUneven++;
+            default:
+          }
+        }
+      }
+    }
+    return (unsupported: unsupported, tooUneven: tooUneven);
+  }
+
   bool hasAnyValidPlacement(Board board, PieceShape shape) {
     final n = board.n;
     for (var r = 0; r < 4; r++) {

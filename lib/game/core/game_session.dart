@@ -7,6 +7,9 @@ enum GamePhase { preview, placing, rotating, gameOver }
 
 enum GameOverReason { noPlacement, summit }
 
+/// Woran der letzte Baustein gescheitert ist.
+enum BlockCause { tooUneven, unsupported, both }
+
 /// Punkte einer Ablage, aufgeschlüsselt (transparent für die Anzeige).
 class PlacementScore {
   const PlacementScore({
@@ -83,6 +86,12 @@ class GameSession {
 
   GamePhase phase = GamePhase.preview;
   GameOverReason? gameOverReason;
+
+  /// Bei [GameOverReason.noPlacement]: warum [current] nirgends passte.
+  BlockCause? blockCause;
+
+  /// Höchste erlaubte Säulenhöhe nach der nächsten Ablage.
+  int get heightLimit => board.minHeight + rules.config.maxSpread;
   int score = 0;
   int piecesPlaced = 0;
   int rotations = 0;
@@ -177,6 +186,12 @@ class GameSession {
     _centerPiece();
     placementsLeft = rules.validPlacements(board, current).length;
     if (placementsLeft == 0) {
+      final b = rules.blockers(board, current);
+      blockCause = b.unsupported == 0
+          ? BlockCause.tooUneven
+          : b.tooUneven == 0
+          ? BlockCause.unsupported
+          : BlockCause.both;
       _end(GameOverReason.noPlacement);
     } else {
       phase = GamePhase.preview;
