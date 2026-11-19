@@ -212,3 +212,13 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Beim Suchen gefunden und behoben: Jeder Ton erzeugte über `FlameAudio.play` einen neuen Audio-Player, der nie freigegeben wurde. Jetzt gibt es je Klang eine feste Zahl vorbereiteter Player (insgesamt 25), die reihum verwendet werden.
 - Geprüft im Simulator mit `--dart-define=FS_AUDIO_STRESS=n` (spielt n Klänge beim Start): Klänge werden zu Ende gespielt, kein Fehler im Protokoll. Der Speicherverlauf unterscheidet sich im Simulator nicht messbar von vorher.
 - Nicht geprüft: Ton auf dem Gerät mit der neuen Lösung, eine lange Runde im Release-Build.
+
+## Paket 1: Münze und Oberfläche (19.11.2026)
+
+- Münze als Blender-Sprite, überall statt der flachen Scheibe.
+- Shop neu: Tafel mit Reitern, Anprobe am Beispielturm, ein Aktionsknopf. Kauf weiter mit Rückfrage.
+- Aufgabenblatt in drei Karten mit „neu in …“; Erfolge zeigen die drei nächsten, der Rest ist eingeklappt.
+- Hauptmenü: Aufgaben-Knopf zeigt erledigte Tagesaufgaben, Shop-Knopf einen Punkt, wenn etwas bezahlbar ist.
+- Ergebnis: niedrigere Karte, Münzen zählen hoch, höchstens zwei Zeilen für Erfülltes, Hauptmenü als runder Knopf neben „Nochmal“.
+- Geprüft im iOS-Simulator: Hauptmenü, alle Zustände der Shop-Karten (ausgewählt, im Besitz, Preis), Anprobe von Plattform und Hintergrund, Kauf, Aufgabenblatt, Ergebnis. 70 Tests, Analyse ohne Befund.
+- Nicht geprüft: Reiter „Blöcke“ und „Effekte“ im neuen Shop, „Alle zeigen“ bei den Erfolgen, kleine Displays, Android (dort fehlt noch das Schließen des Shops über die Zurück-Taste).

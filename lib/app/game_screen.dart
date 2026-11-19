@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../features/gameplay/gameplay_overlays.dart';
 import '../features/home/home_overlay.dart';
 import '../features/rewards/rewards_ui.dart';
+import '../features/shop/shop_panel.dart';
 import '../features/settings/settings_sheet.dart';
 import '../game/flipstack_game.dart';
 import '../game/meta/rewards.dart';
@@ -42,6 +43,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   final Settings _settings = Settings();
   final AppFlow _flow = AppFlow();
   TutorialProgress? _tutorial;
+
+  /// Shop liegt über dem Hauptmenü; der Beispielturm dient als Bühne.
+  bool _shopOpen = false;
   late final DeviceFeedback _deviceFeedback = DeviceFeedback(_settings);
   late final GameFeedback _feedback = widget.autoplay
       ? SilentFeedback()
@@ -209,7 +213,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             onTap: _inRound ? _game.drop : null,
             child: GameWidget(game: _game),
           ),
-          if (state == AppState.mainMenu)
+          if (state == AppState.mainMenu && _shopOpen)
+            ShopPanel(
+              controller: _profile,
+              game: _game,
+              onTap: _feedback.tap,
+              onClose: () {
+                _feedback.tap();
+                setState(() => _shopOpen = false);
+              },
+            ),
+          if (state == AppState.mainMenu && !_shopOpen)
             HomeOverlay(
               stats: _game.stats,
               profile: _profile.profile,
@@ -219,7 +233,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               },
               onShop: () {
                 _feedback.tap();
-                showShopSheet(context, _profile, onTap: _feedback.tap);
+                setState(() => _shopOpen = true);
               },
               onPlay: _play,
               onSettings: () {

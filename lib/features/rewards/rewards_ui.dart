@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../game/meta/rewards.dart';
-import '../../game/render/looks.dart';
 import '../../services/storage/profile_store.dart';
 import '../../shared/theme/fs_colors.dart';
 import '../../shared/widgets/fs_widgets.dart';
@@ -12,21 +11,20 @@ const _body = TextStyle(
   color: FsColors.navy,
 );
 
-/// Münzsymbol: bernsteinfarbene Scheibe mit hellem Kern.
+/// Münze: in Blender gerendert (tools/blender/render_coin.py). Für kleine
+/// Grössen gibt es ein eigenes Bild mit vereinfachter Prägung.
 class CoinIcon extends StatelessWidget {
-  const CoinIcon({super.key, this.size = 16});
+  const CoinIcon({super.key, this.size = 18});
   final double size;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Image.asset(
+      size <= 24 ? 'assets/ui/coin_small.png' : 'assets/ui/coin.png',
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: FsColors.reward,
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFD99C2B), width: size * 0.12),
-      ),
+      filterQuality: FilterQuality.medium,
+      excludeFromSemantics: true,
     );
   }
 }
@@ -41,7 +39,7 @@ class CoinBadge extends StatelessWidget {
     return Semantics(
       label: '$coins Münzen',
       child: Container(
-        padding: const EdgeInsets.fromLTRB(10, 8, 14, 8),
+        padding: const EdgeInsets.fromLTRB(9, 6, 14, 6),
         decoration: BoxDecoration(
           color: FsColors.cream,
           borderRadius: BorderRadius.circular(24),
@@ -56,8 +54,8 @@ class CoinBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const CoinIcon(size: 18),
-            const SizedBox(width: 8),
+            const CoinIcon(size: 22),
+            const SizedBox(width: 6),
             Text(
               '$coins',
               style: const TextStyle(
@@ -90,8 +88,8 @@ class _Reward extends StatelessWidget {
             color: muted ? FsColors.textMuted : FsColors.navy,
           ),
         ),
-        const SizedBox(width: 5),
-        const CoinIcon(size: 13),
+        const SizedBox(width: 4),
+        const CoinIcon(size: 17),
       ],
     );
   }
@@ -138,7 +136,7 @@ Future<void> _sheet(
           ),
           child: ListView(
             shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
             children: children(context),
           ),
         ),
@@ -149,50 +147,125 @@ Future<void> _sheet(
 
 // ------------------------------------------------------------------ Aufgaben
 
+String _untilMidnight(DateTime now) {
+  final left = DateTime(now.year, now.month, now.day + 1).difference(now);
+  return left.inHours >= 1
+      ? 'neu in ${left.inHours} Std.'
+      : 'neu in ${left.inMinutes + 1} Min.';
+}
+
+String _untilMonday(DateTime now) {
+  final days = 8 - now.weekday;
+  return days == 1 ? 'neu morgen' : 'neu in $days Tagen';
+}
+
 /// Tagesaufgaben, Wochenaufgaben und Erfolge als Blatt von unten.
 Future<void> showQuestsSheet(BuildContext context, ProfileController ctl) {
   ctl.refresh();
+  var showAll = false;
   return _sheet(context, ctl, (context) {
     final p = ctl.profile;
-    final open = [
-      for (final a in Achievements.all)
-        if (!p.achievements.contains(a.id)) a,
-    ];
+    final now = DateTime.now();
+    final open =
+        [
+          for (final a in Achievements.all)
+            if (!p.achievements.contains(a.id)) a,
+        ]..sort(
+          (a, b) => (p.counter(b.counter) / b.target).compareTo(
+            p.counter(a.counter) / a.target,
+          ),
+        );
     final done = [
       for (final a in Achievements.all)
         if (p.achievements.contains(a.id)) a,
     ];
+    Widget achievement(Achievement a) => _ProgressRow(
+      title: a.title,
+      text: a.text,
+      progress: p.counter(a.counter),
+      target: a.target,
+      reward: a.reward,
+      done: p.achievements.contains(a.id),
+    );
     return [
-      const Text('HEUTE', style: fsLabel),
-      for (final q in p.daily) _QuestRow(q),
-      const SizedBox(height: 16),
-      const Text('DIESE WOCHE', style: fsLabel),
-      for (final q in p.weekly) _QuestRow(q),
-      const SizedBox(height: 16),
-      Text(
-        'ERFOLGE  ${done.length}/${Achievements.all.length}',
-        style: fsLabel,
-      ),
-      for (final a in [...open, ...done])
-        _ProgressRow(
-          title: a.title,
-          text: a.text,
-          progress: p.counter(a.counter),
-          target: a.target,
-          reward: a.reward,
-          done: p.achievements.contains(a.id),
+      _Section('HEUTE', _untilMidnight(now), [
+        for (final q in p.daily) _QuestRow(q),
+      ]),
+      const SizedBox(height: 12),
+      _Section('DIESE WOCHE', _untilMonday(now), [
+        for (final q in p.weekly) _QuestRow(q),
+      ]),
+      const SizedBox(height: 12),
+      StatefulBuilder(
+        builder: (context, setState) => _Section(
+          'ERFOLGE',
+          '${done.length} von ${Achievements.all.length}',
+          [
+            for (final a in showAll ? [...open, ...done] : open.take(3))
+              achievement(a),
+            Pressable(
+              onTap: () => setState(() => showAll = !showAll),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 14, bottom: 2),
+                child: Center(
+                  child: Text(
+                    showAll ? 'WENIGER ZEIGEN' : 'ALLE ZEIGEN',
+                    style: fsLabel.copyWith(fontSize: 12, color: FsColors.navy),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      const SizedBox(height: 8),
-      Text(
-        'Belohnungen werden am Ende der Runde automatisch gutgeschrieben.',
-        style: _body.copyWith(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w500,
-          color: FsColors.textMuted,
+      ),
+      const SizedBox(height: 12),
+      Center(
+        child: Text(
+          'Belohnungen kommen am Ende der Runde von selbst.',
+          style: _body.copyWith(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w500,
+            color: FsColors.textMuted,
+          ),
         ),
       ),
     ];
   });
+}
+
+/// Abschnitt des Aufgabenblatts als ruhige Karte.
+class _Section extends StatelessWidget {
+  const _Section(this.title, this.note, this.children);
+  final String title, note;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: fsLabel.copyWith(fontSize: 11.5, color: FsColors.navy),
+                ),
+              ),
+              Text(note, style: fsLabel.copyWith(letterSpacing: 0.3)),
+            ],
+          ),
+          ...children,
+        ],
+      ),
+    );
+  }
 }
 
 class _QuestRow extends StatelessWidget {
@@ -287,291 +360,6 @@ class _ProgressRow extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------- Shop
-
-const _categoryNames = {
-  CosmeticCategory.blocks: 'BLOCKFARBEN',
-  CosmeticCategory.background: 'HINTERGRÜNDE',
-  CosmeticCategory.platform: 'PLATTFORMEN',
-  CosmeticCategory.effect: 'EFFEKTE',
-};
-
-/// Shop für kosmetische Freischaltungen. Alles wird mit erspielten Münzen
-/// bezahlt und ändert nur das Aussehen.
-Future<void> showShopSheet(
-  BuildContext context,
-  ProfileController ctl, {
-  required VoidCallback onTap,
-}) {
-  return _sheet(context, ctl, (context) {
-    final p = ctl.profile;
-    return [
-      Row(
-        children: [
-          const Expanded(child: Text('SHOP', style: fsLabel)),
-          CoinBadge(p.coins),
-        ],
-      ),
-      const SizedBox(height: 4),
-      Text(
-        'Alles hier ändert nur das Aussehen, nie das Spiel.',
-        style: _body.copyWith(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w500,
-          color: FsColors.textMuted,
-        ),
-      ),
-      for (final c in CosmeticCategory.values) ...[
-        const SizedBox(height: 18),
-        Text(_categoryNames[c]!, style: fsLabel),
-        const SizedBox(height: 8),
-        LayoutBuilder(
-          builder: (context, box) {
-            final w = (box.maxWidth - 12) / 2;
-            return Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                for (final item in Cosmetics.of(c))
-                  SizedBox(
-                    width: w,
-                    child: _ShopItem(
-                      item: item,
-                      profile: p,
-                      onTap: () => _onItem(context, ctl, item, onTap),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ],
-    ];
-  });
-}
-
-Future<void> _onItem(
-  BuildContext context,
-  ProfileController ctl,
-  Cosmetic item,
-  VoidCallback tap,
-) async {
-  final p = ctl.profile;
-  if (p.owns(item.id)) {
-    tap();
-    ctl.equip(item.id);
-    return;
-  }
-  if (p.coins < item.price) return;
-  tap();
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      backgroundColor: FsColors.cream,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: Text(
-        '${item.name} freischalten?',
-        style: _body.copyWith(fontSize: 19),
-      ),
-      content: Text(
-        'Das kostet ${item.price} Münzen. Danach hast du noch '
-        '${p.coins - item.price}.',
-        style: _body.copyWith(fontWeight: FontWeight.w500),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context, false),
-          child: Text(
-            'Abbrechen',
-            style: _body.copyWith(color: FsColors.textMuted),
-          ),
-        ),
-        TextButton(
-          onPressed: () => Navigator.pop(context, true),
-          child: Text(
-            'Freischalten',
-            style: _body.copyWith(
-              color: const Color(0xFF1F8A7B),
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-  if (ok == true) ctl.buy(item.id);
-}
-
-class _ShopItem extends StatelessWidget {
-  const _ShopItem({
-    required this.item,
-    required this.profile,
-    required this.onTap,
-  });
-  final Cosmetic item;
-  final Profile profile;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final owned = profile.owns(item.id);
-    final equipped = profile.equippedIn(item.category).id == item.id;
-    final missing = item.price - profile.coins;
-    final Widget status = equipped
-        ? Text(
-            'Ausgewählt',
-            style: _body.copyWith(fontSize: 13, color: const Color(0xFF1F8A7B)),
-          )
-        : owned
-        ? Text('Auswählen', style: _body.copyWith(fontSize: 13))
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CoinIcon(size: 13),
-              const SizedBox(width: 5),
-              Text(
-                missing > 0
-                    ? '${item.price} · fehlen $missing'
-                    : '${item.price}',
-                style: _body.copyWith(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: missing > 0 ? FsColors.textMuted : FsColors.navy,
-                ),
-              ),
-            ],
-          );
-    return Semantics(
-      button: true,
-      label: item.name,
-      child: Pressable(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: equipped ? FsColors.action : const Color(0x14202B38),
-              width: equipped ? 2.5 : 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(11),
-                child: SizedBox(
-                  height: 52,
-                  width: double.infinity,
-                  child: _Preview(item),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(item.name, style: _body),
-              const SizedBox(height: 2),
-              status,
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Kleine Vorschau einer Freischaltung.
-class _Preview extends StatelessWidget {
-  const _Preview(this.item);
-  final Cosmetic item;
-
-  @override
-  Widget build(BuildContext context) {
-    switch (item.category) {
-      case CosmeticCategory.blocks:
-        final colors = Looks.palette(item.id);
-        return Column(
-          children: [
-            for (var row = 0; row < 2; row++)
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (var i = 0; i < 4; i++)
-                      Expanded(child: ColoredBox(color: colors[row * 4 + i])),
-                  ],
-                ),
-              ),
-          ],
-        );
-      case CosmeticCategory.background:
-        final t = Looks.background(item.id);
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [t.top, t.bottom],
-            ),
-          ),
-          child: Align(
-            alignment: const Alignment(0.6, 0.2),
-            child: Transform.rotate(
-              angle: 0.785,
-              child: Container(
-                width: 26,
-                height: 26,
-                color: t.shape.withValues(alpha: 0.45),
-              ),
-            ),
-          ),
-        );
-      case CosmeticCategory.platform:
-        return ColoredBox(
-          color: const Color(0x0F202B38),
-          child: Center(
-            child: Container(
-              width: 84,
-              height: 26,
-              decoration: BoxDecoration(
-                color: Looks.platformSwatches[item.id],
-                borderRadius: BorderRadius.circular(5),
-              ),
-              alignment: Alignment.topCenter,
-              child: Container(
-                height: 9,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEDE6D8),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(5)),
-                ),
-              ),
-            ),
-          ),
-        );
-      case CosmeticCategory.effect:
-        final confetti = item.id == 'fx_confetti';
-        return ColoredBox(
-          color: const Color(0xFFD9CDB8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              for (var i = 0; i < 6; i++)
-                Container(
-                  width: 7.0 + (i % 3) * 3,
-                  height: 7.0 + (i % 3) * 3,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: confetti
-                        ? FsColors.blocks[(i * 3) % 8]
-                        : const Color(0xFFFFFAF0),
-                  ),
-                ),
-            ],
-          ),
-        );
-    }
-  }
-}
-
 // ------------------------------------------------------------------ Ergebnis
 
 /// Belohnungen einer Runde im Ergebnis: Münzen, Erfülltes und der Fortschritt
@@ -603,14 +391,19 @@ class RewardsSummary extends StatelessWidget {
         children: [
           Row(
             children: [
-              const CoinIcon(size: 18),
-              const SizedBox(width: 8),
+              const CoinIcon(size: 24),
+              const SizedBox(width: 6),
               Expanded(
-                child: Text(
-                  '+${rewards.total} Münzen',
-                  style: _body.copyWith(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
+                child: TweenAnimationBuilder<int>(
+                  tween: IntTween(begin: 0, end: rewards.total),
+                  duration: const Duration(milliseconds: 900),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, v, _) => Text(
+                    '+$v Münzen',
+                    style: _body.copyWith(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ),
@@ -620,7 +413,7 @@ class RewardsSummary extends StatelessWidget {
               ),
             ],
           ),
-          for (final (text, reward) in lines.take(3))
+          for (final (text, reward) in lines.take(2))
             Padding(
               padding: const EdgeInsets.only(top: 5),
               child: Row(
@@ -643,11 +436,11 @@ class RewardsSummary extends StatelessWidget {
                 ],
               ),
             ),
-          if (lines.length > 3)
+          if (lines.length > 2)
             Padding(
               padding: const EdgeInsets.only(top: 4, left: 24),
               child: Text(
-                'und ${lines.length - 3} weitere',
+                'und ${lines.length - 2} weitere',
                 style: fsLabel.copyWith(fontSize: 12, letterSpacing: 0.3),
               ),
             ),

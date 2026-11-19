@@ -303,20 +303,55 @@ class FlipstackGame extends FlameGame {
     _publish();
   }
 
+  /// Shop geöffnet: Der Beispielturm rückt nach oben und wird zur Bühne, auf
+  /// der Freischaltungen anprobiert werden.
+  bool shopStage = false;
+  double _stageT = 0;
+  Map<CosmeticCategory, String> _previewLook = const {};
+
+  /// Zeigt Freischaltungen probeweise (auch nicht gekaufte). Leere Karte =
+  /// wieder das gewählte Aussehen.
+  void previewLook(Map<CosmeticCategory, String> ids) {
+    _previewLook = Map.of(ids);
+    if (_ready) _applyLook();
+  }
+
+  /// Zeigt den gewählten Effekt einmal auf der Bühne.
+  void previewEffect() {
+    if (!_ready) return;
+    final top = _session.height.toDouble();
+    for (var i = 0; i < 18; i++) {
+      final a = _rng.nextDouble() * math.pi * 2;
+      final v = 1.4 + _rng.nextDouble() * 1.8;
+      _dust.add(
+        _Dust(
+          math.cos(a) * 0.6,
+          math.sin(a) * 0.6,
+          top + 0.1,
+          math.cos(a) * v,
+          math.sin(a) * v,
+          0.06 + _rng.nextDouble() * 0.07,
+          _rng.nextInt(8),
+        ),
+      );
+    }
+  }
+
   /// Übernimmt das gewählte Aussehen (Blockfarben, Hintergrund, Plattform,
   /// Effekt) aus dem Belohnungsstand.
   void _applyLook() {
     final p = profile.profile;
-    final palette = Looks.palette(p.equippedIn(CosmeticCategory.blocks).id);
+    String look(CosmeticCategory c) => _previewLook[c] ?? p.equippedIn(c).id;
+    final palette = Looks.palette(look(CosmeticCategory.blocks));
     if (!identical(palette, _renderer.sprites.palette)) {
       _renderer.sprites.setPalette(palette);
     }
-    final bg = Looks.background(p.equippedIn(CosmeticCategory.background).id);
+    final bg = Looks.background(look(CosmeticCategory.background));
     if (!identical(bg, _background.theme)) _background.theme = bg;
     _renderer.platformFilter = Looks.platformFilter(
-      p.equippedIn(CosmeticCategory.platform).id,
+      look(CosmeticCategory.platform),
     );
-    _confetti = p.equippedIn(CosmeticCategory.effect).id == 'fx_confetti';
+    _confetti = look(CosmeticCategory.effect) == 'fx_confetti';
   }
 
   void _resetRound(GameSession session) {
@@ -405,6 +440,10 @@ class FlipstackGame extends FlameGame {
     if (_notice != null && _time >= _noticeUntil) {
       _notice = null;
       _publish();
+    }
+    final stageTo = _menu && shopStage ? 1.0 : 0.0;
+    if (_stageT != stageTo) {
+      _stageT = (_stageT + (stageTo > _stageT ? dt : -dt) / 0.28).clamp(0, 1);
     }
     if (_menu) {
       // Beispielturm dreht sich alle paar Sekunden um 90° (zeigt die Kernmechanik)
@@ -679,15 +718,17 @@ class FlipstackGame extends FlameGame {
     final half = (n - 1) / 2;
 
     // Kamera: im Spiel folgt sie der Bauhöhe; am Ende zeigt sie den ganzen Turm.
-    final playUnit = size.x / 8.2;
+    final stage = Curves.easeInOutCubic.transform(_stageT);
+    final playUnit = size.x / 8.2 * (1 - 0.34 * stage);
     final over = Curves.easeInOutCubic.transform(_overT);
     _projection.unit = playUnit;
     final playY =
-        size.y * (_menu ? 0.57 : 0.60) + _cam * _projection.unitHeight;
+        size.y * (_menu ? 0.57 - 0.325 * stage : 0.60) +
+        _cam * _projection.unitHeight;
     if (over > 0) {
       final needed =
           s.height * 0.8165 + 5.2; // Turmhöhe + Plattformtiefe (Welteinheiten)
-      final fitUnit = math.min(playUnit, size.y * 0.40 / needed);
+      final fitUnit = math.min(playUnit, size.y * 0.27 / needed);
       _projection.unit = playUnit + (fitUnit - playUnit) * over;
       final fitY =
           safeTop + size.y * 0.03 + (s.height * 0.8165 + 2.2) * fitUnit;

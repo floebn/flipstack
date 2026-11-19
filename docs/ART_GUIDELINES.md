@@ -101,6 +101,13 @@ Regeln: Der Hintergrund ist immer heller und blasser als jeder Würfel. Dunkle S
 
 Abweichung vom Brief: Die Hintergründe sind nicht in Blender gerendert. Prozedurale Verläufe sind auflösungsunabhängig, brauchen keine Bilddateien und lassen sich je Thema umfärben.
 
+## 7a. Münze und Shop
+
+- **Münze:** in Blender gerendert (`tools/blender/render_coin.py`), mit Licht und Material der Würfel: dicke Scheibe, Randwulst, dunkleres Feld, erhabene Raute als Zeichen für die Würfel-Oberseite. Zwei Bilder in `assets/ui/`: `coin.png` (144 px) und `coin_small.png` (60 px, gröbere Prägung für 16–24 pt). Überall dasselbe Widget `CoinIcon`.
+- **Shop:** Tafel in den unteren 60 % des Bildschirms mit vier Reitern (Plattformen, Blöcke, Hintergründe, Effekte) und zweispaltigem Raster. Darüber steht der Beispielturm als Bühne. Ein angetipptes Stück wird dort sofort gezeigt („Anprobe“), auch ungekauft. Ein einziger Knopf unter dem Raster: Auswählen, Freischalten mit Preis oder „Es fehlen N Münzen“.
+- **Karten:** Radius 20, Vorschau mit Radius 13, Name 16 pt, darunter Preis mit Münze, „Im Besitz“ oder „Ausgewählt“. Das angesehene Stück hat einen Navy-Rahmen, das ausgewählte einen Mint-Haken.
+- **Abstände:** 16 außen, 12 zwischen Karten.
+
 ## 8. Arbeitsablauf für Assets
 
 1. Formen ändern in `lib/game/core/piece.dart`, dann `dart run tool/export_pieces.dart`.

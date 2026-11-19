@@ -441,7 +441,7 @@ class ResultsCard extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
               child: FsCard(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -453,7 +453,7 @@ class ResultsCard extends StatelessWidget {
                     Text(
                       '${r.score}',
                       style: const TextStyle(
-                        fontSize: 58,
+                        fontSize: 48,
                         height: 1.05,
                         fontWeight: FontWeight.w800,
                         color: FsColors.navy,
@@ -488,19 +488,25 @@ class ResultsCard extends StatelessWidget {
                     const SizedBox(height: 12),
                     RewardsSummary(rewards: r.rewards, profile: profile),
                     const SizedBox(height: 14),
-                    PillButton('NOCHMAL', onTap: onRestart, height: 60),
-                    Pressable(
-                      onTap: onHome,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 12,
-                          horizontal: 20,
+                    Row(
+                      children: [
+                        RoundIconButton(
+                          Icons.home_rounded,
+                          onTap: onHome,
+                          size: 58,
+                          color: const Color(0xFFE4DFD4),
+                          iconColor: FsColors.navy,
+                          semanticLabel: 'Hauptmenü',
                         ),
-                        child: Text(
-                          'HAUPTMENÜ',
-                          style: fsLabel.copyWith(fontSize: 12),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: PillButton(
+                            'NOCHMAL',
+                            onTap: onRestart,
+                            height: 58,
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),

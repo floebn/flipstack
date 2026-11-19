@@ -22,8 +22,12 @@ class HomeOverlay extends StatelessWidget {
   final VoidCallback onPlay, onSettings, onQuests, onShop;
 
   /// Offene Tages- und Wochenaufgaben.
-  int get _openQuests =>
-      [...profile.daily, ...profile.weekly].where((q) => !q.done).length;
+  String get _dailyDone =>
+      '${profile.daily.where((q) => q.done).length}/${profile.daily.length}';
+
+  /// Es gibt ein Stück, das mit dem Kontostand bezahlbar ist.
+  bool get _canBuy =>
+      Cosmetics.all.any((c) => !profile.owns(c.id) && profile.coins >= c.price);
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +104,7 @@ class HomeOverlay extends StatelessWidget {
                       child: _Secondary(
                         Icons.flag_rounded,
                         'AUFGABEN',
-                        badge: _openQuests == 0 ? null : '$_openQuests',
+                        badge: profile.daily.isEmpty ? null : _dailyDone,
                         onTap: onQuests,
                       ),
                     ),
@@ -109,6 +113,7 @@ class HomeOverlay extends StatelessWidget {
                       child: _Secondary(
                         Icons.palette_rounded,
                         'SHOP',
+                        dot: _canBuy,
                         onTap: onShop,
                       ),
                     ),
@@ -125,7 +130,16 @@ class HomeOverlay extends StatelessWidget {
 
 /// Nebenaktion im Hauptmenü (Aufgaben, Shop).
 class _Secondary extends StatelessWidget {
-  const _Secondary(this.icon, this.label, {required this.onTap, this.badge});
+  const _Secondary(
+    this.icon,
+    this.label, {
+    required this.onTap,
+    this.badge,
+    this.dot = false,
+  });
+
+  /// Kleiner Punkt: hier gibt es etwas Neues.
+  final bool dot;
   final IconData icon;
   final String label;
   final String? badge;
@@ -160,6 +174,17 @@ class _Secondary extends StatelessWidget {
                 label,
                 style: fsLabel.copyWith(fontSize: 12.5, color: FsColors.navy),
               ),
+              if (dot) ...[
+                const SizedBox(width: 8),
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: const BoxDecoration(
+                    color: FsColors.highlight,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
               if (badge != null) ...[
                 const SizedBox(width: 8),
                 Container(
