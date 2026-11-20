@@ -175,7 +175,23 @@ class TowerRenderer {
         ..colorFilter = c.invalid ? sprites.invalidTint : sprites.tint[c.color];
       final center = p.projectWorld(c.wx, c.wy, c.z);
       final src = sprites.atlasRect(c.frame, cellSize);
-      if (c.solid && c.squash == 1) _underlay(canvas, p, c, theta);
+      if (c.solid) {
+        if (c.squash == 1) {
+          _underlay(canvas, p, c, theta);
+        } else {
+          // Beim Aufprall wird die Fugenfüllung genauso gestaucht wie der
+          // Würfel. Früher fiel sie in dem Moment weg, und der Rand
+          // verschwand kurz.
+          final base = center.dy + 0.5 * p.unitHeight;
+          canvas
+            ..save()
+            ..translate(center.dx, base)
+            ..scale(1 + (1 - c.squash) * 0.5, c.squash)
+            ..translate(-center.dx, -base);
+          _underlay(canvas, p, c, theta);
+          canvas.restore();
+        }
+      }
       if (c.squash == 1) {
         _draw(canvas, sprites.cube, src, center, scale, _cubePaint);
         if (gloss != null && !c.invalid) {

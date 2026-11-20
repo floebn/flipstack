@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flipstack/game/meta/rewards.dart';
@@ -235,20 +236,39 @@ void main() {
       double dist(Color a, Color b) {
         final dr = (a.r - b.r) * 255, dg = (a.g - b.g) * 255;
         final db = (a.b - b.b) * 255;
-        return (dr * dr + dg * dg + db * db);
+        return math.sqrt(dr * dr + dg * dg + db * db);
       }
 
+      // Eigene Paletten halten 45 Abstand. Die vier vorgegebenen Paletten
+      // bleiben je in einer Farbfamilie und liegen enger beieinander; für sie
+      // gilt nur, dass keine zwei Farben fast gleich sind.
+      const given = {
+        'blocks_sunset',
+        'blocks_lagoon',
+        'blocks_lavender',
+        'blocks_volcano',
+      };
       Looks.palettes.forEach((id, colors) {
+        expect(colors.length, 8, reason: id);
         for (var i = 0; i < colors.length; i++) {
           for (var j = i + 1; j < colors.length; j++) {
             expect(
               dist(colors[i], colors[j]),
-              greaterThan(45 * 45),
+              greaterThan(given.contains(id) ? 25 : 45),
               reason: '$id: Farbe $i und $j',
             );
           }
         }
       });
+    });
+
+    test('der Shop zeigt jede Kategorie vom günstigsten zum teuersten', () {
+      for (final c in CosmeticCategory.values) {
+        final prices = [for (final x in Cosmetics.of(c)) x.price];
+        expect(prices, [...prices]..sort(), reason: c.name);
+        expect(prices.first, 0);
+      }
+      expect(Cosmetics.of(CosmeticCategory.material).last.id, 'mat_stud');
     });
   });
 

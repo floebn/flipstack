@@ -304,53 +304,66 @@ class Cosmetic {
 abstract final class Cosmetics {
   static const all = [
     Cosmetic('mat_matte', CosmeticCategory.material, 'Matt', 0),
-    Cosmetic('mat_pebble', CosmeticCategory.material, 'Kiesel', 600),
+    Cosmetic('mat_pebble', CosmeticCategory.material, 'Kiesel', 700),
     Cosmetic('mat_plank', CosmeticCategory.material, 'Planke', 800),
-    Cosmetic('mat_facet', CosmeticCategory.material, 'Facette', 1000),
-    Cosmetic('mat_concrete', CosmeticCategory.material, 'Beton', 700),
-    Cosmetic('mat_fabric', CosmeticCategory.material, 'Stoff', 900),
+    Cosmetic('mat_facet', CosmeticCategory.material, 'Facette', 700),
+    Cosmetic('mat_concrete', CosmeticCategory.material, 'Beton', 800),
+    Cosmetic('mat_fabric', CosmeticCategory.material, 'Stoff', 1000),
     Cosmetic('mat_ice', CosmeticCategory.material, 'Eis', 1400),
     Cosmetic('mat_volcano', CosmeticCategory.material, 'Vulkan', 1500),
     Cosmetic('mat_neon', CosmeticCategory.material, 'Neonglas', 1600),
     Cosmetic('mat_stud', CosmeticCategory.material, 'Noppe', 1800),
     Cosmetic('blocks_classic', CosmeticCategory.blocks, 'Klassik', 0),
-    Cosmetic('blocks_arctic', CosmeticCategory.blocks, 'Arctic', 500),
-    Cosmetic('blocks_forest', CosmeticCategory.blocks, 'Forest', 800),
-    Cosmetic('blocks_candy', CosmeticCategory.blocks, 'Candy', 1000),
+    Cosmetic('blocks_arctic', CosmeticCategory.blocks, 'Arctic', 400),
+    Cosmetic('blocks_forest', CosmeticCategory.blocks, 'Forest', 400),
+    Cosmetic('blocks_sunset', CosmeticCategory.blocks, 'Sunset', 500),
+    Cosmetic('blocks_lagoon', CosmeticCategory.blocks, 'Lagoon', 500),
+    Cosmetic('blocks_lavender', CosmeticCategory.blocks, 'Lavender', 500),
+    Cosmetic('blocks_candy', CosmeticCategory.blocks, 'Candy', 600),
+    Cosmetic('blocks_volcano', CosmeticCategory.blocks, 'Volcano', 600),
     Cosmetic('bg_sand', CosmeticCategory.background, 'Sand', 0),
     Cosmetic('bg_dawn', CosmeticCategory.background, 'Dawn', 250),
-    Cosmetic('bg_mist', CosmeticCategory.background, 'Mist', 400),
-    Cosmetic('bg_dusk', CosmeticCategory.background, 'Dusk', 600),
-    Cosmetic('bg_forest', CosmeticCategory.background, 'Wald', 700),
-    Cosmetic('bg_autumn', CosmeticCategory.background, 'Herbst', 800),
-    Cosmetic('bg_winter', CosmeticCategory.background, 'Winter', 800),
-    Cosmetic('bg_underwater', CosmeticCategory.background, 'Unterwasser', 900),
-    Cosmetic('bg_space', CosmeticCategory.background, 'Weltraum', 1200),
-    Cosmetic('bg_city', CosmeticCategory.background, 'Neonstadt', 1300),
+    Cosmetic('bg_mist', CosmeticCategory.background, 'Mist', 350),
+    Cosmetic('bg_dusk', CosmeticCategory.background, 'Dusk', 450),
+    Cosmetic('bg_forest', CosmeticCategory.background, 'Wald', 800),
+    Cosmetic('bg_autumn', CosmeticCategory.background, 'Herbst', 900),
+    Cosmetic('bg_winter', CosmeticCategory.background, 'Winter', 900),
+    Cosmetic('bg_underwater', CosmeticCategory.background, 'Unterwasser', 1100),
+    Cosmetic('bg_space', CosmeticCategory.background, 'Weltraum', 1300),
+    Cosmetic('bg_city', CosmeticCategory.background, 'Neonstadt', 1500),
     Cosmetic('platform_slate', CosmeticCategory.platform, 'Schiefer', 0),
-    Cosmetic('platform_clay', CosmeticCategory.platform, 'Ton', 400),
-    Cosmetic('platform_moss', CosmeticCategory.platform, 'Moos', 700),
-    Cosmetic('platform_oak', CosmeticCategory.platform, 'Eiche', 700),
-    Cosmetic('platform_marble', CosmeticCategory.platform, 'Marmor', 900),
-    Cosmetic('platform_glacier', CosmeticCategory.platform, 'Gletscher', 1200),
+    Cosmetic('platform_clay', CosmeticCategory.platform, 'Ton', 350),
+    Cosmetic('platform_moss', CosmeticCategory.platform, 'Moos', 450),
+    Cosmetic('platform_oak', CosmeticCategory.platform, 'Eiche', 800),
+    Cosmetic('platform_marble', CosmeticCategory.platform, 'Marmor', 1000),
+    Cosmetic('platform_glacier', CosmeticCategory.platform, 'Gletscher', 1300),
     Cosmetic(
       'platform_future',
       CosmeticCategory.platform,
       'Futuristisch',
-      1400,
+      1500,
     ),
-    Cosmetic('platform_island', CosmeticCategory.platform, 'Insel', 1500),
+    Cosmetic('platform_island', CosmeticCategory.platform, 'Insel', 1700),
     Cosmetic('fx_dust', CosmeticCategory.effect, 'Staub', 0),
     Cosmetic('fx_confetti', CosmeticCategory.effect, 'Konfetti', 300),
-    Cosmetic('fx_shards', CosmeticCategory.effect, 'Splitter', 400),
+    Cosmetic('fx_shards', CosmeticCategory.effect, 'Splitter', 500),
   ];
 
   static final Map<String, Cosmetic> byId = {for (final c in all) c.id: c};
 
-  static List<Cosmetic> of(CosmeticCategory c) => [
-    for (final x in all)
-      if (x.category == c) x,
-  ];
+  /// Stücke einer Kategorie, vom günstigsten zum teuersten (bei gleichem
+  /// Preis in der Reihenfolge des Katalogs). So zeigt sie auch der Shop.
+  static List<Cosmetic> of(CosmeticCategory c) {
+    final items = [
+      for (final x in all)
+        if (x.category == c) x,
+    ];
+    final order = {for (var i = 0; i < items.length; i++) items[i].id: i};
+    return items..sort((a, b) {
+      final byPrice = a.price.compareTo(b.price);
+      return byPrice != 0 ? byPrice : order[a.id]!.compareTo(order[b.id]!);
+    });
+  }
 
   static Cosmetic defaultOf(CosmeticCategory c) =>
       of(c).firstWhere((x) => x.price == 0);
@@ -535,6 +548,18 @@ class Profile {
       rewards,
     );
   }
+
+  /// Schreibt zusätzliche Münzen gut (z. B. Verdopplung nach belohnter
+  /// Werbung).
+  Profile withBonus(int amount) => amount <= 0
+      ? this
+      : _copy(
+          coins: coins + amount,
+          counters: {
+            ...counters,
+            Counter.coinsEarned: counter(Counter.coinsEarned) + amount,
+          },
+        );
 
   /// Kauft eine Freischaltung und wählt sie aus. `null`, wenn das nicht geht.
   Profile? buy(String id) {

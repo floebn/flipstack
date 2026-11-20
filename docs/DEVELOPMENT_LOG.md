@@ -273,3 +273,46 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Vulkan nach dem ersten Blick am Turm vereinfacht: Stein heller, ein Riss je Seite weniger. Vorher waren die Farben kaum zu unterscheiden.
 - Geprüft im iOS-Simulator: alle vier Materialien an einem Turm der Höhe 6, beide Welten, die Plattform im Hauptmenü. 70 Tests, Analyse ohne Befund.
 - Nicht geprüft: Drehung, hohe Türme mit Vulkan und Stoff, Shop-Karten der neuen Stücke, Leistung auf dem Gerät, Farbsehschwäche bei Vulkan und Neonglas.
+
+## Preise, Sortierung und vier Farbpaletten (20.11.2026)
+
+- Shop zeigt jede Kategorie vom günstigsten zum teuersten (`Cosmetics.of`), per Test abgesichert.
+- Preise neu gestaffelt nach Aufwand: Umfärbungen 250–600, eigene Formen und Szenerien 700–1300, Spitzenstücke 1400–1800. Vorgaben: Kiesel und Facette 700, Planke und Beton 800.
+- Vier vorgegebene Farbpaletten: Sunset, Lagoon, Lavender, Volcano. Sie bleiben je in einer Farbfamilie; in Sunset liegen sechs Farbpaare, in Lavender zwei und in Lagoon eines unter dem Abstand 45, den die eigenen Paletten einhalten. Der Test verlangt für sie nur 25.
+- Geprüft im Simulator: alle vier Paletten an einem Turm der Höhe 6. Nicht geprüft: Shop-Reihenfolge am Bildschirm, Gerät.
+
+## Rand beim Aufprall und Stoff ohne Rand (20.11.2026)
+
+- Meldung: Bei Materialien mit Rand (Matt, Planke, Eis und weitere) verschwand der Rand kurz, wenn ein Stein landete. Ursache: Gestauchte Würfel wurden ohne Fugenfüllung gezeichnet. Jetzt wird die Füllung mit derselben Stauchung gezeichnet wie der Würfel.
+- Stoff nutzt auf Wunsch die Fugenfüllung von Kiesel und Facette (kein Rand an freien Kanten).
+- Geprüft im Simulator: Video eines Aufpralls mit dem Standardwürfel, Bild für Bild; der Rand bleibt durchgehend sichtbar. Nicht geprüft: andere Materialien, Gerät.
+
+## Phase 6, Teil 6a: Werberegeln und belohnte Angebote (20.11.2026)
+
+- Plan und Aufteilung in `docs/PHASE_6_MONETARISIERUNG.md`.
+- `AdPolicy` (Regeln für Vollbildwerbung), `AdsService` mit `NoAds` und `FakeAds`, zweite Chance (`GameSession.revive`), Münzen verdoppeln.
+- Ohne Schalter ändert sich für Spieler nichts: Es ist kein Werbe-SDK eingebunden, die Angebote erscheinen nicht.
+- Geprüft im iOS-Simulator mit `FS_ADS=fake`: Angebote im Ergebnis, Verdopplung, zweite Chance mit fortgesetzter Runde. 80 Tests, Analyse ohne Befund.
+- Nicht geprüft: Vollbild-Platzhalter zwischen Runden im Simulator (nur per Test), Verdopplung gefolgt von zweiter Chance, Abbruch der Testwerbung.
+
+## Phase 6, Teil 6b: Google-Werbe-SDK und Einwilligung (20.11.2026)
+
+- `google_mobile_ads` 9.2.0 und `url_launcher` 6.3.3 eingebunden. `AdMobAds` lädt je eine belohnte und eine Vollbildanzeige vor, `ConsentManager` fragt die Einwilligung über Googles User Messaging Platform ab.
+- Alle Builds nutzen Googles Testanzeigen; echte Anzeigenblöcke nur mit `FS_ADS=live`.
+- Kennung der App auf `com.floebn.flipstack` umgestellt (iOS und Android).
+- **Befund:** In AdMob ist noch keine Einwilligungsabfrage veröffentlicht. Der Abruf schlägt fehl (Fehler 4, „no form(s) configured“), und `canRequestAds` lieferte trotzdem `true`. Die App hätte Werbung ohne Abfrage geladen. Korrigiert: Ein fehlgeschlagener Abruf gilt als „nicht erlaubt“.
+- Geprüft im iOS-Simulator: ohne Abfrage in AdMob keine Werbung (Protokoll). Mit `FS_SKIP_CONSENT` im Debug-Build: belohnte Testanzeige von Google läuft, Belohnung wird nach dem Schließen gutgeschrieben, nächste Anzeige ist vorgeladen. 80 Tests, Analyse ohne Befund.
+- Nicht geprüft: die Einwilligungsabfrage selbst und Apples Tracking-Dialog (beides braucht die Mitteilungen in AdMob), Vollbildanzeige zwischen Runden mit echtem SDK, vorzeitig geschlossene belohnte Anzeige, Ton nach einer Anzeige, das neue Einstellungsblatt am Bildschirm, echtes Gerät, Android-Build.
+
+## Einwilligung im Simulator geprüft (20.11.2026)
+
+- Nach Veröffentlichung der beiden Mitteilungen in AdMob: DSGVO-Abfrage erscheint beim Start auf Deutsch, danach Apples Tracking-Dialog mit dem Text aus dem Projekt, danach startet das Werbe-SDK und lädt beide Anzeigen. Der Eintrag „Datenschutz-Einstellungen“ erscheint und öffnet die Abfrage erneut.
+- Anzeigename der App auf „FlipStack“ korrigiert (vorher „Flipstack“, sichtbar in beiden Dialogen).
+- Offen: Die Abfrage zeigt das Standard-Symbol von Flutter, weil die App noch kein eigenes Symbol hat (Phase 7). Nicht geprüft: Ablehnen über „Optionen verwalten“ und was Google danach ausliefert, echtes Gerät.
+
+## Phase 6, Teil 6c: Kauf „Werbefrei“ (20.11.2026)
+
+- `in_app_purchase` 3.3.1 eingebunden. `PurchaseService` mit `StorePurchases`, `FakePurchases`, `NoPurchases`; Kaufblatt mit Preis aus dem Store und „Käufe wiederherstellen“.
+- Nach dem Kauf zeigt `AdPolicy` keine Vollbildwerbung mehr; belohnte Angebote bleiben. Diese Entscheidung habe ich so getroffen, weil sie offen war; sie steht im Kaufblatt und lässt sich ändern.
+- Geprüft im iOS-Simulator: mit `FS_IAP=fake` Eintrag in den Einstellungen, Kaufblatt, Testkauf mit Rückmeldung. Mit echtem Store: Produkt wird nicht gefunden (bei Apple noch nicht angelegt), die App meldet es im Protokoll und zeigt „Derzeit nicht verfügbar“. 83 Tests, Analyse ohne Befund.
+- Nicht geprüft: echter Kauf, Abbruch, ausstehender Kauf, Wiederherstellen nach Neuinstallation, Link „Werbung entfernen“ im Ergebnis am Bildschirm. Das geht erst mit angelegtem Produkt und Sandbox-Konto auf einem echten Gerät.

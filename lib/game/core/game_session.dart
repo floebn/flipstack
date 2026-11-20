@@ -246,6 +246,37 @@ class GameSession {
     }
   }
 
+  /// Die zweite Chance wurde in dieser Runde schon genutzt.
+  bool revived = false;
+
+  /// Zweite Chance ist möglich: Die Runde endete, weil ein Stein nirgends
+  /// passte, und sie wurde noch nicht fortgesetzt.
+  bool get canRevive =>
+      phase == GamePhase.gameOver &&
+      gameOverReason == GameOverReason.noPlacement &&
+      !revived;
+
+  /// Setzt die Runde einmal fort: Der Stein, der nirgends passte, wird gegen
+  /// den nächsten getauscht, der passt (notfalls ein Einzelwürfel, der immer
+  /// auf das tiefste Feld passt). Der Turm bleibt, wie er ist.
+  bool revive() {
+    if (!canRevive) return false;
+    revived = true;
+    var piece = next;
+    for (var i = 0; i < 40 && !rules.hasAnyValidPlacement(board, piece); i++) {
+      piece = _bag.next();
+    }
+    if (!rules.hasAnyValidPlacement(board, piece)) piece = PieceLibrary.single;
+    current = piece;
+    next = _bag.next();
+    _centerPiece();
+    placementsLeft = rules.validPlacements(board, current).length;
+    gameOverReason = null;
+    blockCause = null;
+    phase = GamePhase.preview;
+    return true;
+  }
+
   void _end(GameOverReason r) {
     gameOverReason = r;
     phase = GamePhase.gameOver;

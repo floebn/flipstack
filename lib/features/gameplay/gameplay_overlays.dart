@@ -422,7 +422,18 @@ class ResultsCard extends StatelessWidget {
     required this.game,
     required this.onRestart,
     required this.onHome,
+    this.onRevive,
+    this.onDoubleCoins,
+    this.coinsDoubled = false,
+    this.onRemoveAds,
   });
+
+  /// Öffnet den Kauf "Werbefrei"; `null` = nicht anbieten.
+  final VoidCallback? onRemoveAds;
+
+  /// Angebote gegen freiwillige Werbung; `null` = nicht verfügbar.
+  final VoidCallback? onRevive, onDoubleCoins;
+  final bool coinsDoubled;
   final RoundResult result;
   final Profile profile;
   final FlipstackGame game;
@@ -499,6 +510,38 @@ class ResultsCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     RewardsSummary(rewards: r.rewards, profile: profile),
+                    if (onRevive != null ||
+                        onDoubleCoins != null ||
+                        coinsDoubled) ...[
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          if (onRevive != null)
+                            Expanded(
+                              child: _AdOffer(
+                                'Weiterspielen',
+                                'nach Werbung',
+                                onTap: onRevive!,
+                              ),
+                            ),
+                          if (onRevive != null &&
+                              (onDoubleCoins != null || coinsDoubled))
+                            const SizedBox(width: 10),
+                          if (coinsDoubled)
+                            const Expanded(
+                              child: _AdOffer('Verdoppelt', 'gutgeschrieben'),
+                            )
+                          else if (onDoubleCoins != null)
+                            Expanded(
+                              child: _AdOffer(
+                                '+${r.rewards.roundCoins + r.rewards.stageCoins} Münzen',
+                                'nach Werbung',
+                                onTap: onDoubleCoins!,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     Row(
                       children: [
@@ -520,6 +563,17 @@ class ResultsCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (onRemoveAds != null)
+                      Pressable(
+                        onTap: onRemoveAds!,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 12, bottom: 2),
+                          child: Text(
+                            'WERBUNG ENTFERNEN',
+                            style: fsLabel.copyWith(fontSize: 11.5),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -625,4 +679,69 @@ class _PiecePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_PiecePainter old) => old.shape != shape;
+}
+
+/// Angebot gegen freiwillige Werbung. Nennt die Belohnung, bevor die Werbung
+/// startet, und zeigt mit dem Abspiel-Symbol, dass eine Werbung folgt.
+class _AdOffer extends StatelessWidget {
+  const _AdOffer(this.title, this.reward, {this.onTap});
+  final String title, reward;
+
+  /// `null` = bereits eingelöst.
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final done = onTap == null;
+    final child = Container(
+      padding: const EdgeInsets.fromLTRB(10, 9, 12, 9),
+      decoration: BoxDecoration(
+        color: done ? const Color(0x0F202B38) : FsColors.navy,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            done ? Icons.check_circle_rounded : Icons.smart_display_rounded,
+            color: done ? FsColors.action : FsColors.reward,
+            size: 24,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: done ? FsColors.navy : Colors.white,
+                  ),
+                ),
+                Text(
+                  reward,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: done ? FsColors.textMuted : const Color(0xCCFFFFFF),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    if (done) return child;
+    return Semantics(
+      button: true,
+      label: '$title. $reward',
+      child: Pressable(onTap: onTap!, child: child),
+    );
+  }
 }

@@ -42,6 +42,47 @@ abstract final class Looks {
       Color(0xFF80D65C),
       Color(0xFFFA80B4),
     ],
+    // Vom Auftraggeber vorgegebene Paletten (Reihenfolge wie angegeben).
+    'blocks_sunset': [
+      Color(0xFFE97855),
+      Color(0xFFF49A65),
+      Color(0xFFF6BE68),
+      Color(0xFFF5D9B5),
+      Color(0xFFC85F55),
+      Color(0xFFA94F59),
+      Color(0xFFD58B79),
+      Color(0xFFE8B99B),
+    ],
+    'blocks_lagoon': [
+      Color(0xFF16B9AD),
+      Color(0xFF39AFC4),
+      Color(0xFF4389A8),
+      Color(0xFFCDE5DF),
+      Color(0xFF087F83),
+      Color(0xFF386B83),
+      Color(0xFF83C8B2),
+      Color(0xFFE5B6A2),
+    ],
+    'blocks_lavender': [
+      Color(0xFF927CC8),
+      Color(0xFFB29BD9),
+      Color(0xFFD6C6ED),
+      Color(0xFFF0D7E5),
+      Color(0xFF686BA5),
+      Color(0xFFB77EAE),
+      Color(0xFFA5B9D9),
+      Color(0xFFE9B9B4),
+    ],
+    'blocks_volcano': [
+      Color(0xFFE85D45),
+      Color(0xFFF28A4B),
+      Color(0xFFF3B84B),
+      Color(0xFFD8C3A5),
+      Color(0xFFA83D38),
+      Color(0xFF713E42),
+      Color(0xFFC97865),
+      Color(0xFF424D5A),
+    ],
   };
 
   /// Block-Materialien: grauer Würfel-Atlas in assets/sprites/ und, falls
@@ -64,6 +105,7 @@ abstract final class Looks {
   static const edgeInsets = <String, double>{
     'mat_pebble': 0.23,
     'mat_facet': 0.17,
+    'mat_fabric': 0.12,
   };
 
   /// Wie stark die Fugenfüllung gegenüber der Blockfarbe abgedunkelt wird

@@ -88,6 +88,13 @@ class ProfileController extends ChangeNotifier {
     return rewards;
   }
 
+  /// Zusätzliche Münzen gutschreiben (Belohnung für freiwillige Werbung).
+  void addBonus(int amount) => _set(_profile.withBonus(amount));
+
+  /// Stellt einen früheren Stand wieder her (zweite Chance: Die Abrechnung
+  /// der Runde wird zurückgenommen, weil die Runde weitergeht).
+  void restore(Profile p) => _set(p);
+
   bool buy(String id) => _try(_profile.buy(id));
   bool equip(String id) => _try(_profile.equip(id));
 

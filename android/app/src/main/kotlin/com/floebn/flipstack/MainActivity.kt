@@ -1,4 +1,4 @@
-package de.flipstack.flipstack
+package com.floebn.flipstack
 
 import io.flutter.embedding.android.FlutterActivity
 

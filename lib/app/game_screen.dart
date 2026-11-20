@@ -11,7 +11,17 @@ import '../features/shop/shop_panel.dart';
 import '../features/settings/settings_sheet.dart';
 import '../game/flipstack_game.dart';
 import '../game/meta/rewards.dart';
+import '../game/meta/ad_policy.dart';
+
+import 'package:flutter/foundation.dart';
+
+import '../services/ads/ad_ids.dart';
+import '../services/ads/admob_ads.dart';
+import '../services/ads/ads_service.dart';
+import '../services/ads/consent.dart';
+import '../features/premium/remove_ads_sheet.dart';
 import '../services/feedback/game_feedback.dart';
+import '../services/purchases/purchase_service.dart';
 import '../services/storage/profile_store.dart';
 import '../services/storage/settings_store.dart';
 import '../services/storage/stats_store.dart';
@@ -28,6 +38,8 @@ class GameScreen extends StatefulWidget {
     this.autoplay = false,
     this.testCoins = 0,
     this.testLook = '',
+    this.adsMode = '',
+    this.fakePurchases = false,
   });
   final bool showFps;
   final int? seed;
@@ -43,6 +55,13 @@ class GameScreen extends StatefulWidget {
   /// ohne Kauf gezeigt werden.
   final String testLook;
 
+  /// Werbung: '' = Googles Testanzeigen, 'fake' = Platzhalter ohne SDK,
+  /// 'off' = keine, 'live' = echte Anzeigen.
+  final String adsMode;
+
+  /// Testhilfe: Kauf "Werbefrei" als Platzhalter ohne Store.
+  final bool fakePurchases;
+
   @override
   State<GameScreen> createState() => _GameScreenState();
 }
@@ -51,6 +70,112 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   final Settings _settings = Settings();
   final AppFlow _flow = AppFlow();
   TutorialProgress? _tutorial;
+
+  /// Werbung: bis das Werbe-SDK eingebunden ist, entweder keine oder ein
+  /// Platzhalter zum Testen der Abläufe.
+  late final AdsService _ads = switch (widget.adsMode) {
+    'fake' => FakeAds(() => context),
+    'off' => NoAds(),
+    _ =>
+      (widget.autoplay && widget.adsMode.isEmpty) || !_isPhone
+          ? NoAds()
+          : AdMobAds(AdUnitIds.forPlatform(live: widget.adsMode == 'live')),
+  };
+  final ConsentManager _consent = ConsentManager();
+
+  /// Die Einstellungen zeigen einen Eintrag, mit dem sich die Entscheidung
+  /// zur Werbung ändern lässt.
+  bool _privacyOptions = false;
+
+  static bool get _isPhone =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android);
+
+  /// Fragt die Einwilligung ab und startet erst danach das Werbe-SDK. Ohne
+  /// Einwilligung bleibt es bei keiner Werbung; das Spiel läuft normal.
+  Future<void> _startAds() async {
+    final ads = _ads;
+    if (ads is! AdMobAds) return;
+    // Nur zum Prüfen der Werbeabläufe im Debug-Build mit Testanzeigen:
+    // --dart-define=FS_SKIP_CONSENT=true überspringt die Abfrage.
+    const skip = bool.fromEnvironment('FS_SKIP_CONSENT');
+    final testOnly = kDebugMode && skip && widget.adsMode != 'live';
+    if (testOnly || await _consent.gather()) await ads.start();
+    final options = await _consent.privacyOptionsRequired();
+    if (mounted) setState(() => _privacyOptions = options);
+  }
+
+  Future<void> _changePrivacyOptions() async {
+    await _consent.showPrivacyOptions();
+    await _startAds();
+  }
+
+  final AdPolicy _adPolicy = AdPolicy();
+  final Stopwatch _sinceStart = Stopwatch()..start();
+
+  /// Einmaliger Kauf "Werbefrei": entfernt die Vollbildwerbung zwischen den
+  /// Runden. Freiwillige, belohnte Werbung bleibt.
+  late final PurchaseService _purchases = widget.fakePurchases
+      ? FakePurchases()
+      : widget.autoplay || !_isPhone
+      ? NoPurchases()
+      : StorePurchases();
+
+  void _openRemoveAds() {
+    _feedback.tap();
+    showRemoveAdsSheet(context, _purchases, onTap: _feedback.tap);
+  }
+
+  bool _rewardedThisRound = false;
+  bool _coinsDoubled = false;
+  bool _interstitialDue = false;
+  bool _adRunning = false;
+
+  /// Münzen wurden verdoppelt und danach die Runde fortgesetzt: Die
+  /// Verdopplung gilt dann für das wirkliche Ende der Runde, ohne zweite
+  /// Werbung.
+  bool _doublePending = false;
+
+  double get _now => _sinceStart.elapsedMilliseconds / 1000;
+
+  /// Zweite Chance gegen freiwillige Werbung, höchstens einmal je Runde.
+  Future<void> _revive() async {
+    if (_adRunning) return;
+    _adRunning = true;
+    final ok = await _ads.showRewarded(RewardedPlacement.revive);
+    _adRunning = false;
+    if (!ok || !mounted) return;
+    _rewardedThisRound = true;
+    final doubled = _coinsDoubled;
+    if (_game.revive()) {
+      _doublePending = doubled;
+      _coinsDoubled = false;
+      _adPolicy.roundResumed();
+      _interstitialDue = false;
+      setState(() => _flow.go(AppState.playing));
+    }
+  }
+
+  /// Rundenmünzen gegen freiwillige Werbung verdoppeln.
+  Future<void> _doubleCoins(RoundResult r) async {
+    if (_adRunning || _coinsDoubled) return;
+    _adRunning = true;
+    final ok = await _ads.showRewarded(RewardedPlacement.doubleCoins);
+    _adRunning = false;
+    if (!ok || !mounted) return;
+    _rewardedThisRound = true;
+    _profile.addBonus(r.rewards.roundCoins + r.rewards.stageCoins);
+    setState(() => _coinsDoubled = true);
+  }
+
+  /// Zwischen zwei Runden: Vollbildwerbung, falls die Regeln sie erlauben.
+  Future<void> _betweenRounds() async {
+    if (!_interstitialDue) return;
+    _interstitialDue = false;
+    if (_purchases.adsRemoved) return;
+    if (await _ads.showInterstitial()) _adPolicy.interstitialShown(_now);
+  }
 
   /// Shop liegt über dem Hauptmenü; der Beispielturm dient als Bühne.
   bool _shopOpen = false;
@@ -84,6 +209,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _game.assetsReady.addListener(_onReady);
     _game.hud.addListener(_onHud);
     _profile.addListener(_onProfile);
+    _ads.addListener(_onProfile);
+    _purchases.addListener(_onProfile);
+    _purchases.load();
   }
 
   void _onProfile() {
@@ -96,6 +224,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _game.assetsReady.removeListener(_onReady);
     _game.hud.removeListener(_onHud);
     _profile.removeListener(_onProfile);
+    _ads.removeListener(_onProfile);
+    _purchases.removeListener(_onProfile);
+    _purchases.dispose();
     super.dispose();
   }
 
@@ -111,12 +242,31 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _flow.go(AppState.mainMenu);
       if (widget.autoplay) _flow.go(AppState.playing);
     });
+    // Erst wenn das Hauptmenü steht: Einwilligung, dann Werbung
+    _startAds();
   }
 
   /// Runde beendet: Ergebnis zeigen.
   void _onHud() {
     if (_game.hud.value.result != null && _flow.state != AppState.gameOver) {
-      if (_tutorial != null) _finishTutorial();
+      final tutorial = _tutorial != null;
+      if (tutorial) _finishTutorial();
+      final r = _game.hud.value.result!;
+      // Nur das wirkliche Ende der Runde zählt (nicht vor einer zweiten Chance,
+      // die erst danach angeboten wird: dann zählt diese Meldung doppelt nicht,
+      // weil belohnte Werbung die Vollbildwerbung für diese Runde sperrt).
+      _interstitialDue = _adPolicy.roundFinished(
+        now: _now,
+        roundSeconds: r.seconds,
+        tutorial: tutorial,
+        rewardedThisRound: _rewardedThisRound,
+        adsRemoved: _purchases.adsRemoved,
+      );
+      if (_doublePending) {
+        _doublePending = false;
+        _coinsDoubled = true;
+        _profile.addBonus(r.rewards.roundCoins + r.rewards.stageCoins);
+      }
       setState(() => _flow.go(AppState.gameOver));
     }
   }
@@ -187,8 +337,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     }
   }
 
-  void _restart() {
+  Future<void> _restart() async {
     _feedback.tap();
+    if (_flow.state == AppState.gameOver) {
+      if (_rewardedThisRound) _interstitialDue = false;
+      await _betweenRounds();
+      if (!mounted) return;
+    }
+    _rewardedThisRound = false;
+    _coinsDoubled = false;
+    _doublePending = false;
     setState(() {
       if (_tutorial != null) _finishTutorial();
       _flow.go(AppState.playing);
@@ -197,8 +355,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     });
   }
 
-  void _home() {
+  Future<void> _home() async {
     _feedback.tap();
+    if (_flow.state == AppState.gameOver) {
+      if (_rewardedThisRound) _interstitialDue = false;
+      await _betweenRounds();
+      if (!mounted) return;
+    }
+    _rewardedThisRound = false;
+    _coinsDoubled = false;
+    _doublePending = false;
     setState(() {
       if (_tutorial != null) _finishTutorial();
       _flow.go(AppState.mainMenu);
@@ -268,6 +434,16 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   settings: _settings,
                   stats: _game.stats,
                   onTap: _feedback.tap,
+                  adsRemoved: _purchases.adsRemoved,
+                  onRemoveAds: _purchases is NoPurchases
+                      ? null
+                      : () {
+                          Navigator.of(context).pop();
+                          _openRemoveAds();
+                        },
+                  onPrivacyOptions: _privacyOptions
+                      ? _changePrivacyOptions
+                      : null,
                 );
               },
             ),
@@ -304,6 +480,23 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               game: _game,
               onRestart: _restart,
               onHome: _home,
+              onRevive: _ads.rewardedReady && _game.hud.value.result!.canRevive
+                  ? _revive
+                  : null,
+              onDoubleCoins:
+                  _ads.rewardedReady &&
+                      !_coinsDoubled &&
+                      _game.hud.value.result!.rewards.roundCoins > 0
+                  ? () => _doubleCoins(_game.hud.value.result!)
+                  : null,
+              coinsDoubled: _coinsDoubled,
+              // Hinweis auf den Kauf nur, wenn überhaupt Werbung läuft
+              onRemoveAds:
+                  _ads is! NoAds &&
+                      _purchases is! NoPurchases &&
+                      !_purchases.adsRemoved
+                  ? _openRemoveAds
+                  : null,
             ),
         ],
       ),

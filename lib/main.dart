@@ -16,6 +16,15 @@ const _coins = int.fromEnvironment('FS_COINS');
 // --dart-define=FS_LOOK=mat_ice,blocks_arctic  zeigt Freischaltungen ohne Kauf
 const _look = String.fromEnvironment('FS_LOOK');
 
+// Werbung: ohne Schalter Googles Testanzeigen.
+//   --dart-define=FS_ADS=fake  Platzhalter ohne Werbe-SDK (Abläufe prüfen)
+//   --dart-define=FS_ADS=off   keine Werbung
+//   --dart-define=FS_ADS=live  echte Anzeigen (nur für die Veröffentlichung)
+const _ads = String.fromEnvironment('FS_ADS');
+
+// --dart-define=FS_IAP=fake  Kauf "Werbefrei" als Platzhalter ohne Store
+const _iap = String.fromEnvironment('FS_IAP');
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -29,6 +38,8 @@ void main() {
         autoplay: _autoplay,
         testCoins: _coins,
         testLook: _look,
+        adsMode: _ads,
+        fakePurchases: _iap == 'fake',
       ),
     ),
   );

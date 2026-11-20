@@ -37,6 +37,7 @@ class RoundResult {
     required this.stats,
     required this.seconds,
     this.rewards = const RoundRewards(),
+    this.canRevive = false,
     this.maxSpread = 4,
     this.blockCause,
     this.blockedPiece,
@@ -49,6 +50,9 @@ class RoundResult {
   final int score, height, pieces, bestCombo;
   final bool newBest;
   final PlayerStats stats;
+
+  /// Die Runde kann einmal fortgesetzt werden (zweite Chance).
+  final bool canRevive;
 
   /// Münzen, erfüllte Aufgaben und neue Erfolge dieser Runde.
   final RoundRewards rewards;
@@ -305,6 +309,30 @@ class FlipstackGame extends FlameGame {
   }
 
   // ---------------------------------------------------------------- Eingaben
+
+  PlayerStats? _statsBeforeRound;
+  Profile? _profileBeforeRound;
+
+  /// Zweite Chance: setzt die beendete Runde einmal fort. Die Abrechnung
+  /// (Statistik, Münzen, Aufgaben) wird zurückgenommen und am wirklichen Ende
+  /// der Runde neu gemacht.
+  bool revive() {
+    final statsBefore = _statsBeforeRound, profileBefore = _profileBeforeRound;
+    if (!_ready || statsBefore == null || profileBefore == null) return false;
+    if (!_session.revive()) return false;
+    _stats = statsBefore;
+    store.save(_stats);
+    profile.restore(profileBefore);
+    _statsBeforeRound = null;
+    _profileBeforeRound = null;
+    _result = null;
+    _overT = 0;
+    _snapHover();
+    _spawnT = 0;
+    feedback.reward();
+    _publish();
+    return true;
+  }
 
   /// Startet eine neue Runde.
   void restart() {
@@ -576,6 +604,10 @@ class FlipstackGame extends FlameGame {
     s.finishPlacing();
     if (s.phase == GamePhase.gameOver) {
       final newBest = s.score > _stats.bestScore && s.score > 0;
+      // Stand vor der Abrechnung merken: Bei einer zweiten Chance geht die
+      // Runde weiter und wird erst an ihrem wirklichen Ende abgerechnet.
+      _statsBeforeRound = _stats;
+      _profileBeforeRound = profile.profile;
       _stats = _stats.recordRound(s);
       final rewards = profile.recordRound(
         RoundSummary(
@@ -599,6 +631,7 @@ class FlipstackGame extends FlameGame {
         stats: _stats,
         seconds: _playSeconds.round(),
         rewards: rewards,
+        canRevive: s.canRevive,
         maxSpread: s.maxSpread,
         blockCause: s.blockCause,
         blockedPiece: s.blockCause == null ? null : s.current,

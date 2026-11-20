@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../game/core/player_stats.dart';
 import '../../services/storage/settings_store.dart';
@@ -11,6 +12,9 @@ Future<void> showSettingsSheet(
   required Settings settings,
   required PlayerStats stats,
   required VoidCallback onTap,
+  VoidCallback? onPrivacyOptions,
+  VoidCallback? onRemoveAds,
+  bool adsRemoved = false,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -55,12 +59,83 @@ Future<void> showSettingsSheet(
               _Row('Gespielte Runden', '${stats.rounds}'),
               _Row('Durchschnitt', '${stats.averageScore} Punkte'),
               _Row('Abgelegte Bausteine', '${stats.totalPieces}'),
+              const SizedBox(height: 18),
+              if (onRemoveAds != null) ...[
+                const Text('WERBUNG', style: fsLabel),
+                _Link(
+                  adsRemoved ? 'Werbefrei · gekauft' : 'Werbefrei',
+                  onRemoveAds,
+                ),
+                const SizedBox(height: 14),
+              ],
+              const Text('RECHTLICHES', style: fsLabel),
+              if (onPrivacyOptions != null)
+                _Link('Datenschutz-Einstellungen', () {
+                  onTap();
+                  Navigator.of(context).pop();
+                  onPrivacyOptions();
+                }),
+              _Link(
+                'Datenschutzerklärung',
+                () => _open('flipstack/datenschutz/'),
+              ),
+              _Link('Support', () => _open('flipstack/support/')),
+              _Link('Impressum', () => _open('impressum/')),
             ],
           ),
         ),
       ),
     ),
   );
+}
+
+/// Öffnet eine Seite der Website im Browser. Schlägt das fehl (kein Browser,
+/// kein Netz), passiert nichts.
+Future<void> _open(String path) async {
+  try {
+    await launchUrl(
+      Uri.parse('https://bosselgo.de/$path'),
+      mode: LaunchMode.externalApplication,
+    );
+  } catch (_) {}
+}
+
+class _Link extends StatelessWidget {
+  const _Link(this.label, this.onTap);
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      child: Pressable(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: FsColors.navy,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: FsColors.textMuted,
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _Toggle extends StatelessWidget {
