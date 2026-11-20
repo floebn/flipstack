@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flipstack/game/core/game_session.dart';
@@ -9,7 +10,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Vollbildwerbung zwischen Runden', () {
-    // Lange Runden, App schon lange offen: nur die Rundenzählung entscheidet.
+    // App seit langem offen (Sitzungsbeginn bei 0), lange Runden: nur
+    // Rundenzahl und Abstand entscheiden.
+    AdPolicy policy([AdPolicyState state = const AdPolicyState()]) =>
+        AdPolicy(state: state, sessionStart: 0);
     bool round(
       AdPolicy p,
       double now, {
@@ -21,52 +25,42 @@ void main() {
       rewardedThisRound: rewarded,
     );
 
-    test('erste nach drei Runden, danach höchstens jede vierte', () {
-      final p = AdPolicy();
+    test('erste nach drei Runden, danach jede zweite', () {
+      final p = policy();
       final shown = <int>[];
       var now = 200.0;
-      for (var i = 1; i <= 12; i++) {
-        now += 240;
+      for (var i = 1; i <= 9; i++) {
+        now += 300;
         if (round(p, now)) {
           shown.add(i);
           p.interstitialShown(now);
         }
       }
-      expect(shown, [3, 7, 11]);
+      expect(shown, [3, 5, 7, 9]);
     });
 
     test('nicht kurz nach dem Öffnen der App', () {
-      final p = AdPolicy();
-      expect(round(p, 20), isFalse);
-      expect(round(p, 50), isFalse);
-      expect(
-        round(p, 80),
-        isFalse,
-        reason: 'dritte Runde, aber erst 80 s offen',
-      );
-      expect(round(p, 300), isTrue);
+      final p = AdPolicy(sessionStart: 1000);
+      expect(round(p, 1010), isFalse);
+      expect(round(p, 1030), isFalse);
+      expect(round(p, 1055), isFalse, reason: 'dritte Runde, erst 55 s offen');
+      expect(round(p, 1300), isTrue);
     });
 
-    test('Mindestabstand in Sekunden gilt zusätzlich zur Rundenzahl', () {
-      final p = AdPolicy();
+    test('Mindestabstand gilt zusätzlich zur Rundenzahl', () {
+      final p = policy();
       for (var i = 0; i < 3; i++) {
         round(p, 300);
       }
       p.interstitialShown(300);
-      for (var i = 0; i < 3; i++) {
-        expect(round(p, 330), isFalse);
-      }
-      expect(
-        round(p, 400),
-        isFalse,
-        reason: 'vierte Runde, aber erst 100 s her',
-      );
-      expect(round(p, 500), isTrue);
+      expect(round(p, 360), isFalse, reason: 'erst eine Runde seither');
+      expect(round(p, 420), isFalse, reason: 'zweite Runde, aber erst 120 s');
+      expect(round(p, 560), isTrue);
     });
 
     test('nicht nach kurzer Runde, Tutorial, belohnter Werbung oder Kauf', () {
       AdPolicy ready() {
-        final p = AdPolicy();
+        final p = policy();
         round(p, 300);
         round(p, 300);
         return p;
@@ -86,13 +80,39 @@ void main() {
     });
 
     test('eine fortgesetzte Runde zählt nur einmal', () {
-      final p = AdPolicy();
+      final p = policy();
       round(p, 300);
       round(p, 300);
       p.roundResumed();
-      expect(p.rounds, 1);
+      expect(p.state.totalRounds, 1);
       expect(round(p, 300, rewarded: true), isFalse);
       expect(round(p, 300), isTrue);
+    });
+
+    test('der Zählerstand übersteht einen Neustart der App', () {
+      // Sitzung 1: zwei Runden, dann wird die App geschlossen.
+      final first = AdPolicy(sessionStart: 0);
+      round(first, 200);
+      round(first, 400);
+      final saved = AdPolicyState.fromJson(
+        jsonDecode(jsonEncode(first.state)) as Map<String, dynamic>,
+      );
+      // Sitzung 2: Die erste Runde ist insgesamt die dritte.
+      final second = AdPolicy(state: saved, sessionStart: 10000);
+      expect(round(second, 10300), isTrue);
+      second.interstitialShown(10300);
+      final again = AdPolicyState.fromJson(
+        jsonDecode(jsonEncode(second.state)) as Map<String, dynamic>,
+      );
+      expect(
+        (again.totalRounds, again.roundsSinceAd, again.lastAdAt),
+        (3, 0, 10300.0),
+      );
+      expect(
+        AdPolicyState.fromJson({'lastAdAt': 'x', 'totalRounds': -4})
+            .totalRounds,
+        0,
+      );
     });
 
     test('ohne Werbe-SDK gibt es keine Angebote und keine Werbung', () async {
@@ -183,7 +203,7 @@ void main() {
     );
 
     test('nach dem Kauf kommt keine Vollbildwerbung mehr', () {
-      final policy = AdPolicy();
+      final policy = AdPolicy(sessionStart: 0);
       for (var i = 0; i < 12; i++) {
         expect(
           policy.roundFinished(

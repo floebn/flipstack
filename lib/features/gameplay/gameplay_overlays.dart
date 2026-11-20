@@ -412,8 +412,9 @@ class _IconToggle extends StatelessWidget {
   }
 }
 
-/// Ergebnis der Runde. Liegt im unteren Bildschirmdrittel, damit der fertige
-/// Turm darüber sichtbar bleibt.
+/// Ergebnis der Runde als Karte am unteren Rand; der fertige Turm bleibt
+/// darüber sichtbar. Reihenfolge von oben: Punkte, Kennzahlen, Grund des
+/// Spielendes, Angebote gegen freiwillige Werbung, Belohnungen, Aktionen.
 class ResultsCard extends StatelessWidget {
   const ResultsCard({
     super.key,
@@ -445,16 +446,17 @@ class ResultsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final r = result;
-    final summit = r.reason == GameOverReason.summit;
+    final bonus = r.rewards.roundCoins + r.rewards.stageCoins;
+    final hasOffers = onRevive != null || onDoubleCoins != null || coinsDoubled;
     return Positioned.fill(
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 320),
+        duration: const Duration(milliseconds: 360),
         curve: Curves.easeOutCubic,
         builder: (context, t, child) => Opacity(
           opacity: t,
           child: Transform.translate(
-            offset: Offset(0, 40 * (1 - t)),
+            offset: Offset(0, 48 * (1 - t)),
             child: child,
           ),
         ),
@@ -462,119 +464,132 @@ class ResultsCard extends StatelessWidget {
           child: Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
-              child: FsCard(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      summit ? 'GIPFEL ERREICHT' : 'KEIN PLATZ MEHR',
-                      style: fsLabel.copyWith(fontSize: 12.5, letterSpacing: 2),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${r.score}',
-                      style: const TextStyle(
-                        fontSize: 48,
-                        height: 1.05,
-                        fontWeight: FontWeight.w800,
-                        color: FsColors.navy,
-                      ),
-                    ),
-                    Text(
-                      r.newBest
-                          ? 'Neuer Bestwert'
-                          : 'Bestwert ${r.stats.bestScore}',
-                      style: TextStyle(
-                        color: r.newBest
-                            ? FsColors.highlight
-                            : FsColors.textMuted,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                      ),
-                    ),
-                    if (r.blockedPiece != null) ...[
-                      const SizedBox(height: 12),
-                      _BlockedInfo(r, game),
-                    ],
-                    const SizedBox(height: 14),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(context).height * 0.76,
+                ),
+                child: FsCard(
+                  padding: EdgeInsets.zero,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(30),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        _Stat('HÖHE', '${r.height}'),
-                        _Stat('STEINE', '${r.pieces}'),
-                        _Stat('COMBO', '${r.bestCombo}'),
-                        _Stat('ZEIT', _time(r.seconds)),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    RewardsSummary(rewards: r.rewards, profile: profile),
-                    if (onRevive != null ||
-                        onDoubleCoins != null ||
-                        coinsDoubled) ...[
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          if (onRevive != null)
-                            Expanded(
-                              child: _AdOffer(
-                                'Weiterspielen',
-                                'nach Werbung',
-                                onTap: onRevive!,
-                              ),
+                        Flexible(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(18, 18, 18, 4),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _ScoreHeader(r),
+                                const SizedBox(height: 14),
+                                Row(
+                                  children: [
+                                    _Tile('HÖHE', '${r.height}'),
+                                    const SizedBox(width: 8),
+                                    _Tile('STEINE', '${r.pieces}'),
+                                    const SizedBox(width: 8),
+                                    _Tile('COMBO', '${r.bestCombo}'),
+                                    const SizedBox(width: 8),
+                                    _Tile('ZEIT', _time(r.seconds)),
+                                  ],
+                                ),
+                                if (r.blockedPiece != null) ...[
+                                  const SizedBox(height: 10),
+                                  _BlockedInfo(r, game),
+                                ],
+                                if (hasOffers) ...[
+                                  const SizedBox(height: 14),
+                                  Row(
+                                    children: [
+                                      if (onRevive != null)
+                                        Expanded(
+                                          child: PulseRing(
+                                            active: true,
+                                            radius: 22,
+                                            child: _AdOffer(
+                                              icon: Icons.replay_rounded,
+                                              title: 'Weiterspielen',
+                                              subtitle: 'Stein tauschen',
+                                              primary: true,
+                                              onTap: onRevive!,
+                                            ),
+                                          ),
+                                        ),
+                                      if (onRevive != null &&
+                                          (onDoubleCoins != null ||
+                                              coinsDoubled))
+                                        const SizedBox(width: 12),
+                                      if (coinsDoubled)
+                                        Expanded(
+                                          child: _AdOffer(
+                                            title: '+$bonus Münzen',
+                                            subtitle: 'gutgeschrieben',
+                                          ),
+                                        )
+                                      else if (onDoubleCoins != null)
+                                        Expanded(
+                                          child: _AdOffer(
+                                            title: '+$bonus Münzen',
+                                            subtitle: 'Münzen verdoppeln',
+                                            onTap: onDoubleCoins!,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                                const SizedBox(height: 12),
+                                RewardsSummary(
+                                  rewards: r.rewards,
+                                  profile: profile,
+                                ),
+                              ],
                             ),
-                          if (onRevive != null &&
-                              (onDoubleCoins != null || coinsDoubled))
-                            const SizedBox(width: 10),
-                          if (coinsDoubled)
-                            const Expanded(
-                              child: _AdOffer('Verdoppelt', 'gutgeschrieben'),
-                            )
-                          else if (onDoubleCoins != null)
-                            Expanded(
-                              child: _AdOffer(
-                                '+${r.rewards.roundCoins + r.rewards.stageCoins} Münzen',
-                                'nach Werbung',
-                                onTap: onDoubleCoins!,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        RoundIconButton(
-                          Icons.home_rounded,
-                          onTap: onHome,
-                          size: 58,
-                          color: const Color(0xFFE4DFD4),
-                          iconColor: FsColors.navy,
-                          semanticLabel: 'Hauptmenü',
+                          ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: PillButton(
-                            'NOCHMAL',
-                            onTap: onRestart,
-                            height: 58,
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(18, 10, 18, 14),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  RoundIconButton(
+                                    Icons.home_rounded,
+                                    onTap: onHome,
+                                    size: 58,
+                                    color: const Color(0xFFE4DFD4),
+                                    iconColor: FsColors.navy,
+                                    semanticLabel: 'Hauptmenü',
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: PillButton(
+                                      'NOCHMAL',
+                                      onTap: onRestart,
+                                      height: 58,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (onRemoveAds != null)
+                                Pressable(
+                                  onTap: onRemoveAds!,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(top: 12),
+                                    child: Text(
+                                      'WERBUNG ENTFERNEN',
+                                      style: fsLabel.copyWith(fontSize: 11.5),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                    if (onRemoveAds != null)
-                      Pressable(
-                        onTap: onRemoveAds!,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 12, bottom: 2),
-                          child: Text(
-                            'WERBUNG ENTFERNEN',
-                            style: fsLabel.copyWith(fontSize: 11.5),
-                          ),
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -585,25 +600,109 @@ class ResultsCard extends StatelessWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat(this.label, this.value);
+/// Punkte der Runde: Etikett, grosse hochzählende Zahl, Bezug zum Bestwert.
+class _ScoreHeader extends StatelessWidget {
+  const _ScoreHeader(this.r);
+  final RoundResult r;
+
+  @override
+  Widget build(BuildContext context) {
+    final best = r.newBest;
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: best ? FsColors.highlight : const Color(0x14202B38),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (best) ...[
+                const Icon(
+                  Icons.emoji_events_rounded,
+                  size: 16,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                best
+                    ? 'NEUER BESTWERT'
+                    : r.reason == GameOverReason.summit
+                    ? 'GIPFEL ERREICHT'
+                    : 'RUNDE BEENDET',
+                style: fsLabel.copyWith(
+                  fontSize: 11.5,
+                  letterSpacing: 1.8,
+                  color: best ? Colors.white : FsColors.navy,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        TweenAnimationBuilder<int>(
+          tween: IntTween(begin: 0, end: r.score),
+          duration: const Duration(milliseconds: 1100),
+          curve: Curves.easeOutCubic,
+          builder: (context, v, _) => Text(
+            '$v',
+            style: const TextStyle(
+              fontSize: 54,
+              height: 1.05,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -1,
+              color: FsColors.navy,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+        Text(
+          best ? 'Punkte' : 'Punkte  ·  Bestwert ${r.stats.bestScore}',
+          style: const TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w700,
+            color: FsColors.textMuted,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Kennzahl der Runde als kleine Kachel.
+class _Tile extends StatelessWidget {
+  const _Tile(this.label, this.value);
   final String label, value;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            color: FsColors.navy,
-          ),
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(16),
         ),
-        const SizedBox(height: 2),
-        Text(label, style: fsLabel),
-      ],
+        child: Column(
+          children: [
+            FittedBox(
+              child: Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  color: FsColors.navy,
+                ),
+              ),
+            ),
+            const SizedBox(height: 1),
+            Text(label, style: fsLabel.copyWith(fontSize: 9.5)),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -618,22 +717,22 @@ class _BlockedInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     final why = switch (r.blockCause!) {
       BlockCause.tooUneven =>
-        'An jeder Stelle wäre der Turm mehr als ${r.maxSpread} Ebenen ungleich hoch geworden.',
-      BlockCause.unsupported => 'An jeder Stelle hätte er zu wenig aufgelegen.',
+        'Überall wäre der Turm mehr als ${r.maxSpread} Ebenen ungleich hoch geworden.',
+      BlockCause.unsupported => 'Überall hätte er zu wenig aufgelegen.',
       BlockCause.both =>
-        'Er hätte zu wenig aufgelegen oder den Turm mehr als ${r.maxSpread} Ebenen ungleich hoch gemacht.',
+        'Zu wenig Auflage oder mehr als ${r.maxSpread} Ebenen Höhenunterschied.',
     };
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 10, 14, 10),
+      padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
       decoration: BoxDecoration(
-        color: const Color(0x14202B38),
-        borderRadius: BorderRadius.circular(18),
+        color: const Color(0x0F202B38),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
           SizedBox(
-            width: 74,
-            height: 58,
+            width: 60,
+            height: 46,
             child: CustomPaint(painter: _PiecePainter(game, r.blockedPiece!)),
           ),
           const SizedBox(width: 8),
@@ -649,7 +748,7 @@ class _BlockedInfo extends StatelessWidget {
                 ],
               ),
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 12.5,
                 height: 1.3,
                 color: FsColors.navy,
               ),
@@ -681,11 +780,24 @@ class _PiecePainter extends CustomPainter {
   bool shouldRepaint(_PiecePainter old) => old.shape != shape;
 }
 
-/// Angebot gegen freiwillige Werbung. Nennt die Belohnung, bevor die Werbung
-/// startet, und zeigt mit dem Abspiel-Symbol, dass eine Werbung folgt.
+/// Angebot gegen freiwillige Werbung, bewusst auffällig: kräftige Fläche,
+/// grosses Symbol und ein Schild "WERBUNG", damit vor dem Antippen klar ist,
+/// dass eine Anzeige folgt und was es dafür gibt.
 class _AdOffer extends StatelessWidget {
-  const _AdOffer(this.title, this.reward, {this.onTap});
-  final String title, reward;
+  const _AdOffer({
+    required this.title,
+    required this.subtitle,
+    this.icon,
+    this.primary = false,
+    this.onTap,
+  });
+  final String title, subtitle;
+
+  /// Symbol links; ohne Angabe die Münze.
+  final IconData? icon;
+
+  /// Wichtigstes Angebot: Bernstein statt Navy.
+  final bool primary;
 
   /// `null` = bereits eingelöst.
   final VoidCallback? onTap;
@@ -693,55 +805,118 @@ class _AdOffer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final done = onTap == null;
-    final child = Container(
-      padding: const EdgeInsets.fromLTRB(10, 9, 12, 9),
+    final fg = done || primary ? FsColors.navy : Colors.white;
+    final card = Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
-        color: done ? const Color(0x0F202B38) : FsColors.navy,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            done ? Icons.check_circle_rounded : Icons.smart_display_rounded,
-            color: done ? FsColors.action : FsColors.reward,
-            size: 24,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: done ? FsColors.navy : Colors.white,
-                  ),
-                ),
-                Text(
-                  reward,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w600,
-                    color: done ? FsColors.textMuted : const Color(0xCCFFFFFF),
-                  ),
+        gradient: done
+            ? null
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: primary
+                    ? const [Color(0xFFF7CE74), FsColors.reward]
+                    : const [Color(0xFF2E3D50), FsColors.navy],
+              ),
+        color: done ? const Color(0x0F202B38) : null,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: done
+            ? const []
+            : const [
+                BoxShadow(
+                  color: Color(0x33202B38),
+                  blurRadius: 14,
+                  offset: Offset(0, 6),
                 ),
               ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (done)
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: FsColors.action,
+                  size: 30,
+                )
+              else if (icon != null)
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: const BoxDecoration(
+                    color: FsColors.navy,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: FsColors.reward, size: 22),
+                )
+              else
+                const CoinIcon(size: 34),
+              const Spacer(),
+              if (!done)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: primary
+                        ? const Color(0x33202B38)
+                        : const Color(0x33FFFFFF),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.play_arrow_rounded, size: 14, color: fg),
+                      const SizedBox(width: 2),
+                      Text(
+                        'WERBUNG',
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color: fg,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              title,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: fg,
+              ),
+            ),
+          ),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: fg.withValues(alpha: done ? 0.6 : 0.8),
             ),
           ),
         ],
       ),
     );
-    if (done) return child;
+    if (done) return card;
     return Semantics(
       button: true,
-      label: '$title. $reward',
-      child: Pressable(onTap: onTap!, child: child),
+      label: '$title. $subtitle. Werbung ansehen',
+      child: Pressable(onTap: onTap!, child: card),
     );
   }
 }

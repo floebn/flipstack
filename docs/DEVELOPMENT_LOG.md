@@ -316,3 +316,11 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Nach dem Kauf zeigt `AdPolicy` keine Vollbildwerbung mehr; belohnte Angebote bleiben. Diese Entscheidung habe ich so getroffen, weil sie offen war; sie steht im Kaufblatt und lässt sich ändern.
 - Geprüft im iOS-Simulator: mit `FS_IAP=fake` Eintrag in den Einstellungen, Kaufblatt, Testkauf mit Rückmeldung. Mit echtem Store: Produkt wird nicht gefunden (bei Apple noch nicht angelegt), die App meldet es im Protokoll und zeigt „Derzeit nicht verfügbar“. 83 Tests, Analyse ohne Befund.
 - Nicht geprüft: echter Kauf, Abbruch, ausstehender Kauf, Wiederherstellen nach Neuinstallation, Link „Werbung entfernen“ im Ergebnis am Bildschirm. Das geht erst mit angelegtem Produkt und Sandbox-Konto auf einem echten Gerät.
+
+## Werberegeln überarbeitet, Einstellungen und Ergebnis neu gestaltet (20.11.2026)
+
+- Vollbildwerbung: erste nach 3 Runden, danach jede 2. Runde mit mindestens 4 Minuten Abstand; frühestens 60 s nach dem Öffnen. Zählerstand wird gespeichert und übersteht Neustarts.
+- Einstellungen in Karten: hervorgehobene Karte „Werbefrei“ mit Preis, Spiel, Statistik als Kacheln, Rechtliches.
+- Ergebnis: Etikett (Neuer Bestwert / Runde beendet), große hochzählende Punktzahl, Kennzahlen als Kacheln, auffällige Angebote gegen Werbung (Weiterspielen in Bernstein mit Puls, Münzen in Navy, je mit Schild „Werbung“), Aktionen unten fest.
+- Geprüft im iOS-Simulator: drei Runden gespielt, nach der dritten erscheint Googles Vollbild-Testanzeige beim Tippen auf „Nochmal“; neues Ergebnis und neue Einstellungen angesehen. 84 Tests, Analyse ohne Befund.
+- Nicht geprüft: Neustart der App zwischen den Runden am Gerät (nur per Test), „jede 2. Runde“ und der Abstand am Gerät, Ergebnis auf kleinen Displays, Zustand „gekauft“ in den Einstellungen.

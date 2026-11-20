@@ -23,11 +23,13 @@ Stand: Teile 6a, 6b und 6c umgesetzt · Grundlage: Masterbrief Abschnitt 8
 | Regel | Startwert |
 |---|---|
 | erste frühestens nach | 3 beendeten Runden |
-| danach höchstens | jede 4. Runde |
-| Mindestabstand | 180 Sekunden |
-| nach dem Öffnen der App | frühestens nach 90 Sekunden |
+| danach höchstens | jede 2. Runde |
+| Mindestabstand | 240 Sekunden |
+| nach dem Öffnen der App | frühestens nach 60 Sekunden |
 | nicht nach einer Runde unter | 40 Sekunden (frühes Scheitern) |
 | nie | im Tutorial, nach belohnter Werbung in derselben Runde, mit „Werbefrei“ |
+
+Der Zählerstand (Runden insgesamt, Runden seit der letzten Anzeige, Zeitpunkt der letzten Anzeige) wird gespeichert und übersteht einen Neustart der App. „Jede 4. Runde“ aus dem Brief wurde auf jede 2. geändert: Runden dauern meist mehrere Minuten, mit jeder vierten käme Werbung seltener als alle 20 Minuten. Der Mindestabstand von 4 Minuten verhindert Werbung in kurzer Folge.
 
 Es gibt keine Banner und keine Werbung während einer Runde.
 

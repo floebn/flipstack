@@ -13,7 +13,10 @@ import '../game/flipstack_game.dart';
 import '../game/meta/rewards.dart';
 import '../game/meta/ad_policy.dart';
 
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/ads/ad_ids.dart';
 import '../services/ads/admob_ads.dart';
@@ -111,8 +114,31 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     await _startAds();
   }
 
-  final AdPolicy _adPolicy = AdPolicy();
-  final Stopwatch _sinceStart = Stopwatch()..start();
+  /// Regeln für Vollbildwerbung. Der Zählerstand wird gespeichert und beim
+  /// Start geladen, damit ein Neustart der App ihn nicht zurücksetzt.
+  static const _adStateKey = 'ad_policy_v1';
+  AdPolicy _adPolicy = AdPolicy(sessionStart: _epoch);
+
+  static double get _epoch => DateTime.now().millisecondsSinceEpoch / 1000;
+
+  Future<void> _loadAdPolicy() async {
+    try {
+      final raw = (await SharedPreferences.getInstance()).getString(
+        _adStateKey,
+      );
+      if (raw == null) return;
+      _adPolicy = AdPolicy(
+        state: AdPolicyState.fromJson(jsonDecode(raw) as Map<String, dynamic>),
+        sessionStart: _adPolicy.sessionStart,
+      );
+    } catch (_) {}
+  }
+
+  void _saveAdPolicy() {
+    SharedPreferences.getInstance()
+        .then((p) => p.setString(_adStateKey, jsonEncode(_adPolicy.state)))
+        .catchError((_) => false);
+  }
 
   /// Einmaliger Kauf "Werbefrei": entfernt die Vollbildwerbung zwischen den
   /// Runden. Freiwillige, belohnte Werbung bleibt.
@@ -137,7 +163,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   /// Werbung.
   bool _doublePending = false;
 
-  double get _now => _sinceStart.elapsedMilliseconds / 1000;
+  double get _now => _epoch;
 
   /// Zweite Chance gegen freiwillige Werbung, höchstens einmal je Runde.
   Future<void> _revive() async {
@@ -152,6 +178,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       _doublePending = doubled;
       _coinsDoubled = false;
       _adPolicy.roundResumed();
+      _saveAdPolicy();
       _interstitialDue = false;
       setState(() => _flow.go(AppState.playing));
     }
@@ -174,7 +201,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (!_interstitialDue) return;
     _interstitialDue = false;
     if (_purchases.adsRemoved) return;
-    if (await _ads.showInterstitial()) _adPolicy.interstitialShown(_now);
+    if (await _ads.showInterstitial()) {
+      _adPolicy.interstitialShown(_now);
+      _saveAdPolicy();
+    }
   }
 
   /// Shop liegt über dem Hauptmenü; der Beispielturm dient als Bühne.
@@ -212,6 +242,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _ads.addListener(_onProfile);
     _purchases.addListener(_onProfile);
     _purchases.load();
+    if (!widget.autoplay || widget.adsMode.isNotEmpty) _loadAdPolicy();
   }
 
   void _onProfile() {
@@ -262,6 +293,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
         rewardedThisRound: _rewardedThisRound,
         adsRemoved: _purchases.adsRemoved,
       );
+      _saveAdPolicy();
       if (_doublePending) {
         _doublePending = false;
         _coinsDoubled = true;
@@ -435,6 +467,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   stats: _game.stats,
                   onTap: _feedback.tap,
                   adsRemoved: _purchases.adsRemoved,
+                  removeAdsPrice: _purchases.price,
                   onRemoveAds: _purchases is NoPurchases
                       ? null
                       : () {

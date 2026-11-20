@@ -5,19 +5,22 @@
 class AdConfig {
   const AdConfig({
     this.firstAfterRounds = 3,
-    this.everyRounds = 4,
-    this.minSecondsBetween = 180,
-    this.minSecondsAfterStart = 90,
+    this.everyRounds = 2,
+    this.minSecondsBetween = 240,
+    this.minSecondsAfterStart = 60,
     this.minRoundSeconds = 40,
   });
 
-  /// Erste Vollbildwerbung frühestens nach so vielen beendeten Runden.
+  /// Neue Spieler sehen die erste Vollbildwerbung frühestens nach so vielen
+  /// beendeten Runden (über alle Sitzungen gezählt).
   final int firstAfterRounds;
 
-  /// Danach höchstens nach jeder so-vielten beendeten Runde.
+  /// Danach höchstens nach jeder so-vielten beendeten Runde. Runden dauern
+  /// meist mehrere Minuten; "jede vierte" wäre dann seltener als alle 20 min.
   final int everyRounds;
 
-  /// Mindestabstand zwischen zwei Vollbildwerbungen in Sekunden.
+  /// Mindestabstand zwischen zwei Vollbildwerbungen in Sekunden. Schützt vor
+  /// Werbung in kurzer Folge, wenn Runden schnell enden.
   final int minSecondsBetween;
 
   /// Keine Werbung, solange die App noch nicht so lange offen ist.
@@ -28,20 +31,58 @@ class AdConfig {
   final int minRoundSeconds;
 }
 
+/// Zählerstand, der über Neustarts der App hinweg erhalten bleibt. Ohne ihn
+/// begänne jede Sitzung wieder bei null, und häufiges Neustarten umginge die
+/// Werbung.
+class AdPolicyState {
+  const AdPolicyState({
+    this.totalRounds = 0,
+    this.roundsSinceAd = 0,
+    this.lastAdAt,
+  });
+
+  /// Beendete Runden insgesamt.
+  final int totalRounds;
+
+  /// Beendete Runden seit der letzten Vollbildwerbung.
+  final int roundsSinceAd;
+
+  /// Zeitpunkt der letzten Vollbildwerbung (Sekunden seit 1970) oder `null`.
+  final double? lastAdAt;
+
+  Map<String, dynamic> toJson() => {
+    'totalRounds': totalRounds,
+    'roundsSinceAd': roundsSinceAd,
+    'lastAdAt': lastAdAt,
+  };
+
+  factory AdPolicyState.fromJson(Map<String, dynamic> j) {
+    int nat(Object? v) => v is int && v >= 0 ? v : 0;
+    final last = j['lastAdAt'];
+    return AdPolicyState(
+      totalRounds: nat(j['totalRounds']),
+      roundsSinceAd: nat(j['roundsSinceAd']),
+      lastAdAt: last is num && last > 0 ? last.toDouble() : null,
+    );
+  }
+}
+
 class AdPolicy {
-  AdPolicy([this.config = const AdConfig()]);
+  /// [sessionStart] und alle Zeitangaben sind Sekunden seit 1970.
+  AdPolicy({
+    this.config = const AdConfig(),
+    this.state = const AdPolicyState(),
+    required this.sessionStart,
+  });
 
   final AdConfig config;
+  final double sessionStart;
 
-  int _rounds = 0;
-  int _roundsSinceAd = 0;
-  double? _lastAdAt;
-
-  /// Beendete Runden seit dem Öffnen der App.
-  int get rounds => _rounds;
+  /// Aktueller Zählerstand (wird von der App gespeichert).
+  AdPolicyState state;
 
   /// Meldet eine beendete Runde und entscheidet, ob danach eine Vollbild-
-  /// werbung gezeigt werden darf. [now] sind Sekunden seit dem Öffnen der App.
+  /// werbung gezeigt werden darf.
   bool roundFinished({
     required double now,
     required int roundSeconds,
@@ -49,27 +90,36 @@ class AdPolicy {
     bool rewardedThisRound = false,
     bool adsRemoved = false,
   }) {
-    _rounds++;
-    _roundsSinceAd++;
+    state = AdPolicyState(
+      totalRounds: state.totalRounds + 1,
+      roundsSinceAd: state.roundsSinceAd + 1,
+      lastAdAt: state.lastAdAt,
+    );
     if (adsRemoved || tutorial || rewardedThisRound) return false;
     if (roundSeconds < config.minRoundSeconds) return false;
-    if (now < config.minSecondsAfterStart) return false;
-    final last = _lastAdAt;
-    if (last == null) return _rounds >= config.firstAfterRounds;
-    return _roundsSinceAd >= config.everyRounds &&
+    if (now - sessionStart < config.minSecondsAfterStart) return false;
+    final last = state.lastAdAt;
+    if (last == null) return state.totalRounds >= config.firstAfterRounds;
+    return state.roundsSinceAd >= config.everyRounds &&
         now - last >= config.minSecondsBetween;
   }
 
   /// Die zuletzt gemeldete Runde geht nach einer zweiten Chance weiter und
   /// zählt erst an ihrem wirklichen Ende.
   void roundResumed() {
-    if (_rounds > 0) _rounds--;
-    if (_roundsSinceAd > 0) _roundsSinceAd--;
+    state = AdPolicyState(
+      totalRounds: state.totalRounds > 0 ? state.totalRounds - 1 : 0,
+      roundsSinceAd: state.roundsSinceAd > 0 ? state.roundsSinceAd - 1 : 0,
+      lastAdAt: state.lastAdAt,
+    );
   }
 
   /// Die Werbung wurde tatsächlich gezeigt.
   void interstitialShown(double now) {
-    _lastAdAt = now;
-    _roundsSinceAd = 0;
+    state = AdPolicyState(
+      totalRounds: state.totalRounds,
+      roundsSinceAd: 0,
+      lastAdAt: now,
+    );
   }
 }
