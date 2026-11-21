@@ -127,7 +127,16 @@ Eine Runde mit 5.000 Punkten und Höhe 20 bringt 70 Münzen, drei Tagesaufgaben 
 
 **Aufgaben:** Jeden Tag drei aus zwölf, jede Woche (ab Montag) drei aus acht. Die Auswahl hängt nur vom Datum ab und enthält nie zwei Aufgaben derselben Art. Belohnungen werden am Rundenende automatisch gutgeschrieben, es gibt nichts abzuholen.
 
-**Erfolge:** zwölf, an Lebenszeit-Zählern (Höhe, Combo, Runden, Drehungen, saubere Ablagen, volle Ebenen, Punkte).
+**Erfolge:** 55 in 19 Reihen, zusammen 17.500 Münzen. Die meisten Reihen haben Stufen (I bis V); das Aufgabenblatt zeigt je Reihe nur die nächste offene Stufe.
+
+| Art | Reihen |
+|---|---|
+| Leistung in einer Runde | Hoch hinaus (Höhe 10–80), Punktejäger (5.000–50.000), Gleichgewicht (Combo 10–40), Marathon (200, 400 Steine), Ebene für Ebene (10, 25 volle Ebenen), Makellos (Höhe 15 ohne Combo-Verlust), Ohne Hilfe (Höhe 40 ohne Weiterspielen), Stratege (Höhe 20 mit höchstens 20 Drehungen) |
+| Ausdauer | Baumeister (100–20.000 Steine), Saubere Arbeit, Lückenlos, Drehmeister, Dranbleiber (10–500 Runden) |
+| Regelmäßigkeit | Stammgast (7, 30, 100 Spieltage insgesamt, nicht in Folge), Pflichtbewusst (Tagesaufgaben), Wochenprofi |
+| Sammeln | Sparfuchs (verdiente Münzen), Sammler (5, 15, alle Designs), Stilbewusst |
+
+Es gibt bewusst keine Erfolge für Tage in Folge, für angesehene Werbung oder für Käufe.
 
 **Freischaltungen**
 

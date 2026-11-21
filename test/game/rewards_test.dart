@@ -149,6 +149,135 @@ void main() {
       expect(r2.achievements, isEmpty);
     });
 
+    test('Reihen: Stufen steigen, alte Kennungen bleiben erhalten', () {
+      final bySeries = <String, List<Achievement>>{};
+      for (final a in Achievements.all) {
+        bySeries.putIfAbsent(a.series, () => []).add(a);
+      }
+      bySeries.forEach((series, list) {
+        for (var i = 1; i < list.length; i++) {
+          expect(
+            list[i].target,
+            greaterThan(list[i - 1].target),
+            reason: series,
+          );
+          expect(
+            list[i].reward,
+            greaterThan(list[i - 1].reward),
+            reason: series,
+          );
+          expect(list[i].tier, list[i - 1].tier + 1, reason: series);
+        }
+      });
+      // Kennungen der ersten zwölf Erfolge
+      for (final id in [
+        'first_stack',
+        'higher',
+        'sky_high',
+        'cloud',
+        'balance',
+        'clean500',
+        'rotation',
+        'persistent',
+        'score5k',
+        'score15k',
+        'layers100',
+        'builder',
+      ]) {
+        expect(Achievements.byId.containsKey(id), isTrue, reason: id);
+      }
+      expect(Achievements.all.length, greaterThan(50));
+    });
+
+    test('je Reihe ist nur die nächste Stufe offen', () {
+      final first = Achievements.nextOpen(const {});
+      expect(first.map((a) => a.series).toSet().length, first.length);
+      expect(first.where((a) => a.series == 'height').single.id, 'higher');
+      final later = Achievements.nextOpen(const {'higher', 'sky_high'});
+      expect(later.where((a) => a.series == 'height').single.id, 'cloud');
+      final all = {for (final a in Achievements.all) a.id};
+      expect(Achievements.nextOpen(all), isEmpty);
+    });
+
+    test('Spieltage zählen je Tag einmal, auch mit Lücken', () {
+      var p = const Profile();
+      for (final day in [19, 19, 20, 25, 25, 25]) {
+        p = p.recordRound(round(score: 100), DateTime(2026, 11, day, 12)).$1;
+      }
+      expect(p.counter(Counter.daysPlayed), 3);
+    });
+
+    test('Erfolge für Können in einer Runde', () {
+      RoundSummary r({
+        int height = 0,
+        bool revived = false,
+        int flawless = 0,
+        int? at20,
+        int pieces = 10,
+        int layers = 0,
+      }) => RoundSummary(
+        score: 100,
+        height: height,
+        pieces: pieces,
+        bestCombo: 0,
+        rotations: 0,
+        cleanPlacements: 0,
+        layers: layers,
+        revived: revived,
+        flawlessHeight: flawless,
+        rotationsAt20: at20,
+      );
+      List<String> ids(RoundSummary s) => [
+        for (final a in const Profile().recordRound(s, thu).$2.achievements)
+          a.id,
+      ];
+      expect(ids(r(height: 45, revived: true)), isNot(contains('no_help_40')));
+      expect(ids(r(height: 45)), contains('no_help_40'));
+      expect(ids(r(flawless: 14)), isNot(contains('flawless_15')));
+      expect(ids(r(flawless: 15)), contains('flawless_15'));
+      expect(ids(r(height: 22, at20: 21)), isNot(contains('strategist')));
+      expect(ids(r(height: 22, at20: 20)), contains('strategist'));
+      expect(
+        ids(r(pieces: 200, layers: 10)),
+        containsAll(['marathon_200', 'round_layers_10']),
+      );
+    });
+
+    test('Sammeln: Designs, Stil und erfüllte Aufgaben', () {
+      var p = const Profile(coins: 99999);
+      for (final id in [
+        'mat_pebble',
+        'platform_clay',
+        'bg_dawn',
+        'bg_mist',
+        'fx_confetti',
+      ]) {
+        p = p.buy(id)!;
+      }
+      final (after, rewards) = p
+          .refreshed(thu)
+          .recordRound(
+            round(
+              score: 9000,
+              height: 22,
+              pieces: 80,
+              combo: 9,
+              rotations: 12,
+              clean: 30,
+              layers: 5,
+            ),
+            thu,
+          );
+      final got = [for (final a in rewards.achievements) a.id];
+      expect(got, containsAll(['designs_5', 'styled']));
+      expect(after.counter(Counter.dailyDone), 3);
+      expect(after.counter(Counter.designs), 5);
+      expect(
+        Achievements.byId['designs_${Achievements.purchasable}'],
+        isNotNull,
+      );
+    });
+
     test('Kennungen sind eindeutig', () {
       for (final ids in [
         [for (final a in Achievements.all) a.id],

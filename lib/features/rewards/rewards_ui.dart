@@ -166,15 +166,13 @@ Future<void> showQuestsSheet(BuildContext context, ProfileController ctl) {
   return _sheet(context, ctl, (context) {
     final p = ctl.profile;
     final now = DateTime.now();
-    final open =
-        [
-          for (final a in Achievements.all)
-            if (!p.achievements.contains(a.id)) a,
-        ]..sort(
-          (a, b) => (p.counter(b.counter) / b.target).compareTo(
-            p.counter(a.counter) / a.target,
-          ),
-        );
+    // Je Reihe nur die nächste Stufe, die am weitesten fortgeschrittene zuerst
+    final open = Achievements.nextOpen(p.achievements)
+      ..sort(
+        (a, b) => (p.counter(b.counter) / b.target).compareTo(
+          p.counter(a.counter) / a.target,
+        ),
+      );
     final done = [
       for (final a in Achievements.all)
         if (p.achievements.contains(a.id)) a,

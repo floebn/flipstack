@@ -677,6 +677,9 @@ class FlipstackGame extends FlameGame {
           rotations: s.rotations,
           cleanPlacements: s.cleanPlacements,
           layers: s.fullLayers,
+          revived: s.revived,
+          flawlessHeight: s.flawlessHeight,
+          rotationsAt20: s.rotationsAt20,
         ),
       );
       store.save(_stats);

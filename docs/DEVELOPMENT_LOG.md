@@ -347,3 +347,10 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Einstellungsblatt bleibt unter Statusleiste und Dynamic Island.
 - Geprüft: 94 Tests. Im Simulator: Runde begonnen, App beendet, neu gestartet, fortgesetzt (Punkte, Turm und Steine stimmen).
 - Nicht geprüft: Einstellungsblatt auf dem Gerät des Auftraggebers, Fortsetzen nach zweiter Chance und mit gedrehter Plattform am Bildschirm. Die Simulation der Schwierigkeit ist mit der geänderten Auflage und dem neuen Beutel nicht neu gelaufen.
+
+## Erfolge ausgebaut (22.11.2026)
+
+- 55 Erfolge in 19 Reihen statt 12 Einzelerfolgen, zusammen 17.500 Münzen. Die Kennungen der ersten zwölf sind erhalten, erreichte Erfolge bleiben.
+- Neue Zähler im Profil (Spieltage, erfüllte Aufgaben, Designs, Bestwerte je Runde); die Runde liefert dafür „Höhe ohne Combo-Verlust“ und „Drehungen bei Höhe 20“.
+- Aus dem Vorschlag gestrichen: „Über den Berg“ (wäre dasselbe wie Höhe 40).
+- Geprüft: 99 Tests, Aufgabenblatt im Simulator. Nicht geprüft: Ergebnisbildschirm mit vielen Erfolgen auf einmal, Gerät.

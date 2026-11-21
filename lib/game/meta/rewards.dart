@@ -14,11 +14,23 @@ class RoundSummary {
     required this.rotations,
     required this.cleanPlacements,
     required this.layers,
+    this.revived = false,
+    this.flawlessHeight = 0,
+    this.rotationsAt20,
   });
   final int score, height, pieces, bestCombo, rotations, cleanPlacements;
 
   /// Vollständig gefüllte Ebenen.
   final int layers;
+
+  /// Die zweite Chance wurde genutzt.
+  final bool revived;
+
+  /// Grösste Höhe, die erreicht wurde, bevor die Combo zum ersten Mal riss.
+  final int flawlessHeight;
+
+  /// Anzahl der Drehungen beim Erreichen von Höhe 20 (`null` = nicht erreicht).
+  final int? rotationsAt20;
 }
 
 /// Zähler über alle Runden.
@@ -33,6 +45,27 @@ enum Counter {
   bestHeight,
   bestScore,
   bestCombo,
+  // Neue Zähler immer am Ende anhängen; gespeichert wird der Name.
+  /// Gekaufte Designs.
+  designs,
+
+  /// Runden mit gekauftem Material, gekaufter Plattform und gekauftem
+  /// Hintergrund zugleich.
+  styledRounds,
+
+  /// Verschiedene Tage, an denen eine Runde beendet wurde, und der letzte
+  /// davon als Zahl JJJJMMTT.
+  daysPlayed,
+  lastPlayDay,
+  dailyDone,
+  weeklyDone,
+  bestFlawlessHeight,
+  bestHeightNoRevive,
+  bestRoundPieces,
+  bestRoundLayers,
+
+  /// 1, sobald Höhe 20 mit höchstens 20 Drehungen erreicht wurde.
+  strategist,
 }
 
 /// Wie eine Aufgabe ausgewertet wird.
@@ -179,16 +212,61 @@ class Achievement {
     this.text,
     this.counter,
     this.target,
-    this.reward,
-  );
+    this.reward, {
+    String? series,
+    this.tier = 0,
+  }) : series = series ?? id;
   final String id, title, text;
   final Counter counter;
   final int target, reward;
+
+  /// Reihe, zu der der Erfolg gehört. Das Aufgabenblatt zeigt je Reihe nur
+  /// die nächste offene Stufe.
+  final String series;
+
+  /// Stufe innerhalb der Reihe (1 = erste), 0 = Einzelerfolg.
+  final int tier;
 }
 
 abstract final class Achievements {
-  static const all = [
-    Achievement(
+  static const _roman = ['', 'I', 'II', 'III', 'IV', 'V'];
+
+  static String _n(int v) {
+    final t = v.toString();
+    return t.length <= 3
+        ? t
+        : '${t.substring(0, t.length - 3)}.${t.substring(t.length - 3)}';
+  }
+
+  /// Reihe in Stufen. [ids] hält die Kennungen älterer Fassungen fest, damit
+  /// bereits erreichte Erfolge erhalten bleiben.
+  static List<Achievement> _series(
+    String key,
+    String title,
+    String Function(String target) text,
+    Counter counter,
+    List<int> targets,
+    List<int> rewards, {
+    Map<int, String> ids = const {},
+  }) => [
+    for (var i = 0; i < targets.length; i++)
+      Achievement(
+        ids[targets[i]] ?? '${key}_${targets[i]}',
+        targets.length == 1 ? title : '$title ${_roman[i + 1]}',
+        text(_n(targets[i])),
+        counter,
+        targets[i],
+        rewards[i],
+        series: key,
+        tier: targets.length == 1 ? 0 : i + 1,
+      ),
+  ];
+
+  /// Zahl der kaufbaren Designs (für "Sammler").
+  static final int purchasable = Cosmetics.all.where((c) => c.price > 0).length;
+
+  static final List<Achievement> all = [
+    const Achievement(
       'first_stack',
       'Erster Stein',
       'Lege deinen ersten Baustein ab',
@@ -196,99 +274,186 @@ abstract final class Achievements {
       1,
       20,
     ),
-    Achievement(
-      'higher',
-      'Es geht aufwärts',
-      'Erreiche Höhe 10',
-      Counter.bestHeight,
-      10,
-      50,
-    ),
-    Achievement(
-      'sky_high',
+    // --- Leistung in einer Runde
+    ..._series(
+      'height',
       'Hoch hinaus',
-      'Erreiche Höhe 25',
+      (t) => 'Erreiche Höhe $t',
       Counter.bestHeight,
-      25,
-      150,
+      [10, 25, 40, 60, 80],
+      [50, 150, 300, 500, 800],
+      ids: {10: 'higher', 25: 'sky_high', 40: 'cloud'},
     ),
-    Achievement(
-      'cloud',
-      'Über den Wolken',
-      'Erreiche Höhe 40',
-      Counter.bestHeight,
-      40,
-      300,
-    ),
-    Achievement(
-      'balance',
-      'Feines Gleichgewicht',
-      'Erreiche eine Combo von 15',
-      Counter.bestCombo,
-      15,
-      100,
-    ),
-    Achievement(
-      'clean500',
-      'Saubere Arbeit',
-      'Lege 500 Bausteine sauber ab',
-      Counter.cleanPlacements,
-      500,
-      150,
-    ),
-    Achievement(
-      'rotation',
-      'Drehmeister',
-      'Drehe die Plattform 100-mal',
-      Counter.rotations,
-      100,
-      100,
-    ),
-    Achievement(
-      'persistent',
-      'Dranbleiber',
-      'Spiele 50 Runden',
-      Counter.rounds,
-      50,
-      200,
-    ),
-    Achievement(
-      'score5k',
+    ..._series(
+      'score',
       'Punktejäger',
-      'Erreiche 5.000 Punkte in einer Runde',
+      (t) => 'Erreiche $t Punkte in einer Runde',
       Counter.bestScore,
-      5000,
-      100,
+      [5000, 15000, 30000, 50000],
+      [100, 250, 400, 700],
+      ids: {5000: 'score5k', 15000: 'score15k'},
     ),
-    Achievement(
-      'score15k',
-      'Rekordjäger',
-      'Erreiche 15.000 Punkte in einer Runde',
-      Counter.bestScore,
-      15000,
+    ..._series(
+      'combo',
+      'Gleichgewicht',
+      (t) => 'Erreiche eine Combo von $t',
+      Counter.bestCombo,
+      [10, 15, 25, 40],
+      [50, 100, 250, 500],
+      ids: {15: 'balance'},
+    ),
+    ..._series(
+      'marathon',
+      'Marathon',
+      (t) => 'Lege $t Bausteine in einer Runde ab',
+      Counter.bestRoundPieces,
+      [200, 400],
+      [200, 500],
+    ),
+    ..._series(
+      'round_layers',
+      'Ebene für Ebene',
+      (t) => 'Fülle $t Ebenen in einer Runde',
+      Counter.bestRoundLayers,
+      [10, 25],
+      [150, 400],
+    ),
+    ..._series(
+      'flawless',
+      'Makellos',
+      (t) => 'Erreiche Höhe $t, ohne die Combo zu verlieren',
+      Counter.bestFlawlessHeight,
+      [15],
+      [250],
+    ),
+    ..._series(
+      'no_help',
+      'Ohne Hilfe',
+      (t) => 'Erreiche Höhe $t ohne „Weiterspielen“',
+      Counter.bestHeightNoRevive,
+      [40],
+      [300],
+    ),
+    const Achievement(
+      'strategist',
+      'Stratege',
+      'Erreiche Höhe 20 mit höchstens 20 Drehungen',
+      Counter.strategist,
+      1,
       250,
     ),
-    Achievement(
-      'layers100',
+    // --- Ausdauer über alle Runden
+    ..._series(
+      'pieces',
+      'Baumeister',
+      (t) => 'Lege insgesamt $t Bausteine ab',
+      Counter.pieces,
+      [100, 1000, 5000, 20000],
+      [30, 200, 400, 800],
+      ids: {1000: 'builder'},
+    ),
+    ..._series(
+      'clean',
+      'Saubere Arbeit',
+      (t) => 'Lege insgesamt $t Bausteine sauber ab',
+      Counter.cleanPlacements,
+      [100, 500, 2500, 10000],
+      [50, 150, 300, 600],
+      ids: {500: 'clean500'},
+    ),
+    ..._series(
+      'layers',
       'Lückenlos',
-      'Fülle 100 Ebenen vollständig',
+      (t) => 'Fülle insgesamt $t Ebenen vollständig',
       Counter.layers,
-      100,
+      [25, 100, 500, 2000],
+      [50, 150, 300, 600],
+      ids: {100: 'layers100'},
+    ),
+    ..._series(
+      'rotations',
+      'Drehmeister',
+      (t) => 'Drehe die Plattform insgesamt $t-mal',
+      Counter.rotations,
+      [100, 1000, 5000],
+      [100, 200, 400],
+      ids: {100: 'rotation'},
+    ),
+    ..._series(
+      'rounds',
+      'Dranbleiber',
+      (t) => 'Spiele $t Runden',
+      Counter.rounds,
+      [10, 50, 200, 500],
+      [50, 200, 400, 800],
+      ids: {50: 'persistent'},
+    ),
+    // --- Regelmässigkeit: Tage zählen insgesamt, nicht in Folge. Ein
+    //     verpasster Tag kostet nichts.
+    ..._series(
+      'days',
+      'Stammgast',
+      (t) => 'Spiele an $t verschiedenen Tagen',
+      Counter.daysPlayed,
+      [7, 30, 100],
+      [100, 300, 800],
+    ),
+    ..._series(
+      'daily',
+      'Pflichtbewusst',
+      (t) => 'Erfülle $t Tagesaufgaben',
+      Counter.dailyDone,
+      [10, 50, 200],
+      [100, 250, 600],
+    ),
+    ..._series(
+      'weekly',
+      'Wochenprofi',
+      (t) => 'Erfülle $t Wochenaufgaben',
+      Counter.weeklyDone,
+      [5, 20],
+      [200, 500],
+    ),
+    // --- Sammeln
+    ..._series(
+      'coins',
+      'Sparfuchs',
+      (t) => 'Verdiene insgesamt $t Münzen',
+      Counter.coinsEarned,
+      [1000, 5000, 20000],
+      [100, 250, 600],
+    ),
+    ..._series(
+      'designs',
+      'Sammler',
+      (t) => 'Schalte $t Designs frei',
+      Counter.designs,
+      [5, 15, purchasable],
+      [150, 400, 1000],
+    ),
+    const Achievement(
+      'styled',
+      'Stilbewusst',
+      'Spiele eine Runde mit gekauftem Material, gekaufter Plattform '
+          'und gekauftem Hintergrund',
+      Counter.styledRounds,
+      1,
       150,
     ),
-    Achievement(
-      'builder',
-      'Baumeister',
-      'Lege 1.000 Bausteine ab',
-      Counter.pieces,
-      1000,
-      200,
-    ),
   ];
+
+  static final Map<String, Achievement> byId = {for (final a in all) a.id: a};
+
+  /// Je Reihe die nächste noch nicht erreichte Stufe.
+  static List<Achievement> nextOpen(Set<String> achieved) {
+    final seen = <String>{};
+    return [
+      for (final a in all)
+        if (!achieved.contains(a.id) && seen.add(a.series)) a,
+    ];
+  }
 }
 
-/// [material] ist die Form und Oberfläche der Würfel, [blocks] ihre Farben;
-/// beides lässt sich frei kombinieren.
 enum CosmeticCategory { material, blocks, background, platform, effect }
 
 class Cosmetic {
@@ -506,6 +671,29 @@ class Profile {
     best(Counter.bestHeight, r.height);
     best(Counter.bestScore, r.score);
     best(Counter.bestCombo, r.bestCombo);
+    best(Counter.bestRoundPieces, r.pieces);
+    best(Counter.bestRoundLayers, r.layers);
+    best(Counter.bestFlawlessHeight, r.flawlessHeight);
+    if (!r.revived) best(Counter.bestHeightNoRevive, r.height);
+    final turns = r.rotationsAt20;
+    if (turns != null && turns <= 20) best(Counter.strategist, 1);
+    best(Counter.designs, p.owned.length);
+    if (CosmeticCategory.values
+        .where(
+          (k) =>
+              k == CosmeticCategory.material ||
+              k == CosmeticCategory.platform ||
+              k == CosmeticCategory.background,
+        )
+        .every((k) => p.equippedIn(k).price > 0)) {
+      add(Counter.styledRounds, 1);
+    }
+    // Spieltage insgesamt (nicht in Folge)
+    final today = now.year * 10000 + now.month * 100 + now.day;
+    if (r.pieces > 0 && (c[Counter.lastPlayDay] ?? 0) != today) {
+      c[Counter.lastPlayDay] = today;
+      add(Counter.daysPlayed, 1);
+    }
 
     final doneQuests = <QuestDef>[];
     List<QuestState> advance(List<QuestState> states) => [
@@ -523,7 +711,11 @@ class Profile {
           return QuestState(s.id, progress, done);
         }(),
     ];
-    final daily = advance(p.daily), weekly = advance(p.weekly);
+    final daily = advance(p.daily);
+    add(Counter.dailyDone, doneQuests.length);
+    final dailyCount = doneQuests.length;
+    final weekly = advance(p.weekly);
+    add(Counter.weeklyDone, doneQuests.length - dailyCount);
 
     final unlocked = <Achievement>[
       for (final a in Achievements.all)

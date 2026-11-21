@@ -132,6 +132,13 @@ class GameSession {
   int combo = 0;
   int bestCombo = 0;
 
+  /// Grösste Höhe, die erreicht wurde, bevor die Combo zum ersten Mal riss.
+  int flawlessHeight = 0;
+  bool _comboBroken = false;
+
+  /// Anzahl der Drehungen beim Erreichen von Höhe 20 (`null` = nicht erreicht).
+  int? rotationsAt20;
+
   /// Anzahl sauberer Ablagen in dieser Runde.
   int cleanPlacements = 0;
 
@@ -197,6 +204,11 @@ class GameSession {
     final clean = p.isFullySupported;
     combo = clean ? combo + 1 : 0;
     if (clean) cleanPlacements++;
+    if (!clean) _comboBroken = true;
+    if (!_comboBroken) flawlessHeight = board.maxHeight;
+    if (rotationsAt20 == null && board.maxHeight >= 20) {
+      rotationsAt20 = rotations;
+    }
     if (combo > bestCombo) bestCombo = combo;
     // Meilensteine alle 5 Ebenen; jeder zweite ist eine Etappe.
     final reached = board.maxHeight ~/ milestoneEvery;
@@ -276,6 +288,9 @@ class GameSession {
     'layers': _countedLayers.toList(),
     'nextId': _nextPieceId,
     'revived': revived,
+    'flawless': flawlessHeight,
+    'comboBroken': _comboBroken,
+    'rotAt20': rotationsAt20,
   };
 
   /// Stellt eine mit [toJson] gespeicherte Runde wieder her. Liefert `null`,
@@ -309,7 +324,10 @@ class GameSession {
         ..cleanPlacements = j['clean'] as int
         .._milestones = j['milestones'] as int
         .._nextPieceId = j['nextId'] as int
-        ..revived = j['revived'] == true;
+        ..revived = j['revived'] == true
+        ..flawlessHeight = j['flawless'] is int ? j['flawless'] as int : 0
+        .._comboBroken = j['comboBroken'] != false
+        ..rotationsAt20 = j['rotAt20'] is int ? j['rotAt20'] as int : null;
       s._countedLayers.addAll((j['layers'] as List).cast<int>());
       s._centerPiece();
       s.placementsLeft = s.rules.validPlacements(s.board, s.current).length;
