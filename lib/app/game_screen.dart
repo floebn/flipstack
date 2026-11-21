@@ -177,6 +177,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (_game.revive()) {
       _doublePending = doubled;
       _coinsDoubled = false;
+      _saveRound();
       _adPolicy.roundResumed();
       _saveAdPolicy();
       _interstitialDue = false;
@@ -242,6 +243,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _ads.addListener(_onProfile);
     _purchases.addListener(_onProfile);
     _purchases.load();
+    _loadSavedRound();
     if (!widget.autoplay || widget.adsMode.isNotEmpty) _loadAdPolicy();
   }
 
@@ -282,6 +284,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (_game.hud.value.result != null && _flow.state != AppState.gameOver) {
       final tutorial = _tutorial != null;
       if (tutorial) _finishTutorial();
+      _clearSavedRound();
       final r = _game.hud.value.result!;
       // Nur das wirkliche Ende der Runde zählt (nicht vor einer zweiten Chance,
       // die erst danach angeboten wird: dann zählt diese Meldung doppelt nicht,
@@ -308,14 +311,91 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     // Zurück im Vordergrund: neuer Tag bringt neue Aufgaben.
     if (state == AppLifecycleState.resumed) _profile.refresh();
     // App verlässt den Vordergrund: laufende Runde pausieren.
+    if (state != AppLifecycleState.resumed) _saveRound();
     if (state != AppLifecycleState.resumed && _flow.pauseIfActive()) {
       _game.paused = true;
       if (mounted) setState(() {});
     }
   }
 
+  // ------------------------------------------------ Runde fortsetzen
+
+  static const _roundKey = 'saved_round_v1';
+
+  /// Zuletzt gespeicherte, noch nicht beendete Runde.
+  Map<String, dynamic>? _savedRound;
+
+  bool get _persistRounds => !widget.autoplay;
+
+  Future<void> _loadSavedRound() async {
+    if (!_persistRounds) return;
+    try {
+      final raw = (await SharedPreferences.getInstance()).getString(_roundKey);
+      if (raw == null) return;
+      final saved = jsonDecode(raw) as Map<String, dynamic>;
+      if (mounted) setState(() => _savedRound = saved);
+    } catch (_) {}
+  }
+
+  /// Speichert die laufende Runde (nach jedem Zug, bei Pause und wenn die App
+  /// den Vordergrund verlässt). Das Tutorial wird nicht gespeichert.
+  void _saveRound() {
+    if (!_persistRounds || _tutorial != null) return;
+    final snap = _game.snapshot();
+    if (snap == null) return;
+    _savedRound = snap;
+    SharedPreferences.getInstance()
+        .then((p) => p.setString(_roundKey, jsonEncode(snap)))
+        .catchError((_) => false);
+  }
+
+  void _clearSavedRound() {
+    if (_savedRound == null && !_persistRounds) return;
+    _savedRound = null;
+    SharedPreferences.getInstance()
+        .then((p) => p.remove(_roundKey))
+        .catchError((_) => false);
+  }
+
+  /// Höhe und Punkte der gespeicherten Runde für das Hauptmenü.
+  ({int height, int score})? get _savedInfo {
+    final session = _savedRound?['session'];
+    if (session is! Map) return null;
+    var height = 0;
+    final cells = session['cells'];
+    if (cells is List) {
+      for (final c in cells) {
+        if (c is List && c.length > 2 && c[2] is int && c[2] + 1 > height) {
+          height = (c[2] as int) + 1;
+        }
+      }
+    }
+    final score = session['score'];
+    return (height: height, score: score is int ? score : 0);
+  }
+
+  void _continueRound() {
+    final saved = _savedRound;
+    if (saved == null) return;
+    _feedback.tap();
+    if (_game.resumeRound(saved)) {
+      setState(() {
+        _tutorial = null;
+        _rewardedThisRound = false;
+        _coinsDoubled = false;
+        _doublePending = false;
+        _flow.go(AppState.playing);
+      });
+    } else {
+      // Nicht lesbar (z. B. nach einem Update): verwerfen und neu beginnen
+      _clearSavedRound();
+      _play();
+    }
+  }
+
   void _play() {
     _feedback.tap();
+    _clearSavedRound();
     setState(() {
       if (_settings.tutorialDone) {
         _tutorial = null;
@@ -330,7 +410,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _onGameEvent(GameEvent e) {
     final t = _tutorial;
-    if (t == null) return;
+    if (t == null) {
+      if (e != GameEvent.moved) _saveRound();
+      return;
+    }
     final advanced = switch (e) {
       GameEvent.moved => t.onMoved(),
       GameEvent.placed => t.onPlaced(),
@@ -355,6 +438,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void _pause() {
     _feedback.tap();
+    _saveRound();
     if (_flow.go(AppState.paused)) {
       _game.paused = true;
       setState(() {});
@@ -371,6 +455,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _restart() async {
     _feedback.tap();
+    _clearSavedRound();
     if (_flow.state == AppState.gameOver) {
       if (_rewardedThisRound) _interstitialDue = false;
       await _betweenRounds();
@@ -389,6 +474,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   Future<void> _home() async {
     _feedback.tap();
+    // Aus der Pause ins Menü: Die Runde bleibt zum Fortsetzen erhalten
+    _saveRound();
     if (_flow.state == AppState.gameOver) {
       if (_rewardedThisRound) _interstitialDue = false;
       await _betweenRounds();
@@ -450,6 +537,8 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             HomeOverlay(
               stats: _game.stats,
               profile: _profile.profile,
+              savedRound: _savedInfo,
+              onContinue: _continueRound,
               onQuests: () {
                 _feedback.tap();
                 showQuestsSheet(context, _profile);

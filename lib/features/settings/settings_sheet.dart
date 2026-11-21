@@ -23,6 +23,7 @@ Future<void> showSettingsSheet(
     backgroundColor: FsColors.cream,
     showDragHandle: true,
     isScrollControlled: true,
+    useSafeArea: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
     ),
@@ -31,7 +32,11 @@ Future<void> showSettingsSheet(
       builder: (context, _) => SafeArea(
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.86,
+            // unter Statusleiste und Dynamic Island bleiben
+            maxHeight:
+                MediaQuery.sizeOf(context).height -
+                MediaQuery.viewPaddingOf(context).top -
+                72,
           ),
           child: ListView(
             shrinkWrap: true,

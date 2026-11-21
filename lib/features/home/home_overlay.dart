@@ -16,7 +16,13 @@ class HomeOverlay extends StatelessWidget {
     required this.onSettings,
     required this.onQuests,
     required this.onShop,
+    this.savedRound,
+    this.onContinue,
   });
+
+  /// Noch nicht beendete Runde, die fortgesetzt werden kann.
+  final ({int height, int score})? savedRound;
+  final VoidCallback? onContinue;
   final PlayerStats stats;
   final Profile profile;
   final VoidCallback onPlay, onSettings, onQuests, onShop;
@@ -90,7 +96,7 @@ class HomeOverlay extends StatelessWidget {
             bottom: 34,
             child: Column(
               children: [
-                if (stats.rounds > 0) ...[
+                if (stats.rounds > 0 && savedRound == null) ...[
                   Text(
                     'BESTWERT ${stats.bestScore}   ·   HÖHE ${stats.bestHeight}',
                     style: fsLabel.copyWith(
@@ -100,7 +106,39 @@ class HomeOverlay extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                 ],
-                PillButton('SPIELEN', onTap: onPlay, height: 70),
+                if (savedRound != null && onContinue != null) ...[
+                  PillButton(
+                    'RUNDE FORTSETZEN',
+                    onTap: onContinue!,
+                    height: 70,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Höhe ${savedRound!.height}  ·  ${savedRound!.score} Punkte',
+                    style: fsLabel.copyWith(
+                      fontSize: 12,
+                      letterSpacing: 0.6,
+                      color: FsColors.onBackgroundMuted,
+                    ),
+                  ),
+                  Pressable(
+                    onTap: onPlay,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 20,
+                      ),
+                      child: Text(
+                        'NEUE RUNDE',
+                        style: fsLabel.copyWith(
+                          fontSize: 12.5,
+                          color: FsColors.onBackground,
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else
+                  PillButton('SPIELEN', onTap: onPlay, height: 70),
                 const SizedBox(height: 12),
                 Row(
                   children: [

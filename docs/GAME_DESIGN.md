@@ -7,7 +7,7 @@ Der Brief legt Rotation, Rasterplatzierung und faire Physik fest. Offen lässt e
 ## 1. Grundregeln (Stand Prototyp, in `lib/game/core/rules.dart`)
 
 1. **Fallen wie in Säulen:** Ein abgelegter Baustein fällt senkrecht, bis eine seiner Zellen auf der Plattform oder einem Würfel aufliegt.
-2. **Auflage:** Mindestens die Hälfte der Säulen eines Bausteins muss aufliegen (`minSupport` = 0,5). Überhänge sind also begrenzt erlaubt und überbrücken Lücken.
+2. **Auflage:** Mindestens die Hälfte der Würfel eines Bausteins muss von einer aufliegenden Säule getragen werden (`minSupport` = 0,5). Überhänge sind also begrenzt erlaubt und überbrücken Lücken. Bei flachen Bausteinen ist das dasselbe wie „die Hälfte der Felder“. Bei der Stufe zählt die Säule aus zwei Würfeln doppelt: Sie darf nicht nur mit dem einzelnen Würfel aufliegen.
 3. **Gleichmäßig bauen:** Nach dem Ablegen darf die höchste Säule höchstens 4 Ebenen über der niedrigsten liegen (`maxSpread` = 4). Diese Regel ist neu gegenüber dem ersten Entwurf. Ohne sie ließe sich für jede Form ein eigener Stapel bauen, und die Runde würde nie enden. **Ab Turmhöhe 10 sinkt der Wert auf 3.** Geprüft wird nur der neu abgelegte Baustein: Er darf höchstens so weit über das tiefste Feld ragen. Was schon steht, bleibt gültig, der Übergang kann also niemanden festsetzen.
 4. **Kein Überstand über den Rand.**
 5. **Bausteine drehen sich nie selbst.** Ihre Ausrichtung zum Turm ändert sich nur durch die Plattformrotation.
@@ -95,7 +95,7 @@ Ein Spieltest am 19.11.2026 ergab: Nach 77 Steinen war nicht erkennbar, warum di
 | Baustein abgelegt | 10 je Würfel |
 | **Sauber abgelegt** (liegt vollständig auf) | +50 % |
 | **Combo** | Jede saubere Ablage in Folge erhöht den Multiplikator um 0,1 (×1,0 → höchstens ×2,0). Er gilt für die beiden Zeilen darüber. Eine Ablage mit Überhang setzt ihn zurück. |
-| **Ebene vollständig** (alle 25 Felder einer Höhe belegt) | +100 je Ebene |
+| **Ebene vollständig** (alle 25 Felder einer Höhe belegt) | +100 je Ebene, auch wenn darunter eine Lücke offen geblieben ist |
 | **Höhenmeilenstein** (Höhe 5, 15, 25, …) | +200 |
 | **Etappe** (Höhe 10, 20, 30, …) | +500 |
 

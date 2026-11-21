@@ -338,3 +338,12 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Auf Wunsch: Höhe 60 soll ab und zu erreichbar sein, und danach soll nichts mehr schwerer werden. Neu: Fünfer doppelt erst ab 45, Ecke weg ab 55, danach nichts (`DifficultyCurve.maxLateDrops = 1`).
 - Simulation (Planer, 150 Runden): Endhöhe 30 / 48 / 63, Höhe 60 in 15 %, Höhe 80 in 1 %, höchste Runde 86.
 - 86 Tests, Analyse ohne Befund. Am Bildschirm nicht geprüft.
+
+## Ebenen-Bonus, Auflage der Stufe, Runde fortsetzen (22.11.2026)
+
+- **Fehler behoben:** Volle Ebenen wurden nur von unten lückenlos gezählt. Blieb unter einem Überhang ein Feld leer, gab es für alle Ebenen darüber nie wieder den Bonus (gemeldet bei Höhe 50). Jetzt zählt jede Ebene einmal, sobald sie voll ist.
+- **Regel geändert:** Die Auflage zählt Würfel statt Felder. Die Stufe konnte mit dem einzelnen Würfel aufliegen, während die Säule aus zwei Würfeln frei hing. Das war regelkonform, aber unlogisch. Flache Bausteine sind unverändert.
+- **Runde fortsetzen:** Die Runde wird nach jedem Zug, bei Pause und beim Verlassen der App gespeichert. Das Hauptmenü zeigt dann „Runde fortsetzen“ mit Höhe und Punkten, darunter „Neue Runde“. Der Beutel mischt jetzt je Beutel aus (Startwert, Nummer), damit die Folge nach dem Fortsetzen dieselbe ist. Das Tutorial wird nicht gespeichert.
+- Einstellungsblatt bleibt unter Statusleiste und Dynamic Island.
+- Geprüft: 94 Tests. Im Simulator: Runde begonnen, App beendet, neu gestartet, fortgesetzt (Punkte, Turm und Steine stimmen).
+- Nicht geprüft: Einstellungsblatt auf dem Gerät des Auftraggebers, Fortsetzen nach zweiter Chance und mit gedrehter Plattform am Bildschirm. Die Simulation der Schwierigkeit ist mit der geänderten Auflage und dem neuen Beutel nicht neu gelaufen.

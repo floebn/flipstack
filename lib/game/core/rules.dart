@@ -14,7 +14,8 @@ class RuleConfig {
 
   final int grid;
 
-  /// Anteil der Säulen eines Bausteins, die beim Landen aufliegen müssen.
+  /// Anteil der Würfel eines Bausteins, die beim Landen von einer
+  /// aufliegenden Säule getragen werden müssen.
   final double minSupport;
 
   /// Grösster erlaubter Höhenunterschied am Anfang der Runde: Ein abgelegter
@@ -115,13 +116,19 @@ class Rules {
       final rest = heights[cols[i]] - low[i];
       if (rest > z0) z0 = rest;
     }
-    var supported = 0;
+    // Auflage: Säulen, die aufliegen, und die Würfel, die sie tragen. Für die
+    // Regel zählen die Würfel: Eine Säule aus zwei Würfeln, die in der Luft
+    // hängt, wiegt doppelt. Bei flachen Bausteinen ist beides dasselbe.
+    var supported = 0, carried = 0;
     for (var i = 0; i < cols.length; i++) {
-      if (heights[cols[i]] - low[i] == z0) supported++;
+      if (heights[cols[i]] - low[i] == z0) {
+        supported++;
+        carried += high[i] - low[i] + 1;
+      }
     }
     final cells = [for (final (x, y, dz) in mapped) (x, y, z0 + dz)];
     var error = PlacementError.none;
-    if (supported / cols.length < config.minSupport) {
+    if (carried / shape.cells.length < config.minSupport) {
       error = PlacementError.unsupported;
     } else {
       // Der Baustein darf nicht zu weit über die niedrigste Säule ragen.

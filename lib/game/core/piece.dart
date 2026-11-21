@@ -120,6 +120,11 @@ abstract final class PieceLibrary {
     ...tier6,
   ];
 
+  /// Formen nach Namen (zum Wiederherstellen einer gespeicherten Runde).
+  static final Map<String, PieceShape> byName = {
+    for (final s in all) s.name: s,
+  };
+
   /// Schwellen (Anzahl bereits gezogener Bausteine), ab denen neue Formen dazukommen.
   static const tierStarts = [0, 10, 22, 36];
 

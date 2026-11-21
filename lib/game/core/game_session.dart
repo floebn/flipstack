@@ -1,4 +1,5 @@
 import 'board.dart';
+import 'orientation.dart';
 import 'piece.dart';
 import 'piece_bag.dart';
 import 'rules.dart';
@@ -134,10 +135,10 @@ class GameSession {
   /// Anzahl sauberer Ablagen in dieser Runde.
   int cleanPlacements = 0;
 
-  /// Vollständig gefüllte Ebenen (von unten, lückenlos).
-  int get fullLayers => _fullLayers;
+  /// Vollständig gefüllte Ebenen dieser Runde.
+  int get fullLayers => _countedLayers.length;
+  final Set<int> _countedLayers = {};
   int _milestones = 0;
-  int _fullLayers = 0;
   int _nextPieceId = 1;
 
   /// Anzahl gültiger Ablagen (Position x Orientierung) für den aktuellen Baustein.
@@ -185,9 +186,13 @@ class GameSession {
       board.add(Cell(x, y, z, current.color, id));
     }
     var layers = 0;
-    while (board.isLayerFull(_fullLayers)) {
-      _fullLayers++;
-      layers++;
+    // Jede Ebene, die diese Ablage vollständig macht, zählt einmal, auch
+    // wenn weiter unten eine Lücke unter einem Überhang offen geblieben ist.
+    for (final z in {for (final c in p.cells) c.$3}) {
+      if (!_countedLayers.contains(z) && board.isLayerFull(z)) {
+        _countedLayers.add(z);
+        layers++;
+      }
     }
     final clean = p.isFullySupported;
     combo = clean ? combo + 1 : 0;
@@ -247,6 +252,70 @@ class GameSession {
       _end(GameOverReason.noPlacement);
     } else {
       phase = GamePhase.preview;
+    }
+  }
+
+  /// Speichert die Runde, damit sie nach dem Schliessen der App fortgesetzt
+  /// werden kann. Nur in Ruhe sinnvoll (kein Stein fällt, Runde läuft).
+  Map<String, dynamic> toJson() => {
+    'v': 1,
+    'bag': _bag.toJson(),
+    'cells': [
+      for (final c in board.cells) [c.x, c.y, c.z, c.color, c.pieceId],
+    ],
+    'current': current.name,
+    'next': next.name,
+    'orientation': Orientation.normalize(orientation),
+    'score': score,
+    'pieces': piecesPlaced,
+    'rotations': rotations,
+    'combo': combo,
+    'bestCombo': bestCombo,
+    'clean': cleanPlacements,
+    'milestones': _milestones,
+    'layers': _countedLayers.toList(),
+    'nextId': _nextPieceId,
+    'revived': revived,
+  };
+
+  /// Stellt eine mit [toJson] gespeicherte Runde wieder her. Liefert `null`,
+  /// wenn die Daten unvollständig oder beschädigt sind oder die Runde nicht
+  /// mehr spielbar wäre.
+  static GameSession? fromJson(Map<String, dynamic> j) {
+    try {
+      if (j['v'] != 1) return null;
+      final bag = (j['bag'] as Map).cast<String, dynamic>();
+      final s = GameSession(seed: bag['seed'] as int);
+      s._bag.restore(bag);
+      for (final c in j['cells'] as List) {
+        final v = (c as List).cast<int>();
+        if (v[0] < 0 || v[1] < 0 || v[0] >= s.grid || v[1] >= s.grid) {
+          return null;
+        }
+        s.board.add(Cell(v[0], v[1], v[2], v[3], v[4]));
+      }
+      final current = PieceLibrary.byName[j['current']];
+      final next = PieceLibrary.byName[j['next']];
+      if (current == null || next == null) return null;
+      s
+        ..current = current
+        ..next = next
+        ..orientation = j['orientation'] as int
+        ..score = j['score'] as int
+        ..piecesPlaced = j['pieces'] as int
+        ..rotations = j['rotations'] as int
+        ..combo = j['combo'] as int
+        ..bestCombo = j['bestCombo'] as int
+        ..cleanPlacements = j['clean'] as int
+        .._milestones = j['milestones'] as int
+        .._nextPieceId = j['nextId'] as int
+        ..revived = j['revived'] == true;
+      s._countedLayers.addAll((j['layers'] as List).cast<int>());
+      s._centerPiece();
+      s.placementsLeft = s.rules.validPlacements(s.board, s.current).length;
+      return s.placementsLeft > 0 ? s : null;
+    } catch (_) {
+      return null;
     }
   }
 

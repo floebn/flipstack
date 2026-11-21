@@ -358,6 +358,36 @@ class FlipstackGame extends FlameGame {
     _publish();
   }
 
+  /// Stand der laufenden Runde zum Speichern, oder `null`, wenn gerade keine
+  /// Runde in Ruhe ist (Menü, fallender Stein, Spielende).
+  Map<String, dynamic>? snapshot() {
+    if (!_ready || _menu) return null;
+    final s = _session;
+    if (s.phase != GamePhase.preview && s.phase != GamePhase.rotating) {
+      return null;
+    }
+    return {'session': s.toJson(), 'seconds': _playSeconds};
+  }
+
+  /// Setzt eine gespeicherte Runde fort. `false`, wenn sie nicht lesbar ist.
+  bool resumeRound(Map<String, dynamic> saved) {
+    if (!_ready) return false;
+    final raw = saved['session'];
+    final session = raw is Map
+        ? GameSession.fromJson(raw.cast<String, dynamic>())
+        : null;
+    if (session == null) return false;
+    _menu = false;
+    final seconds = saved['seconds'];
+    _playSeconds = seconds is num ? seconds.toDouble() : 0;
+    _resetRound(session);
+    // Kamera direkt auf die Bauhöhe, nicht vom Boden hochfahren
+    _cam = math.max(0, session.height - 3).toDouble();
+    feedback.spawn();
+    _publish();
+    return true;
+  }
+
   /// Shop geöffnet: Der Beispielturm rückt nach oben und wird zur Bühne, auf
   /// der Freischaltungen anprobiert werden.
   bool shopStage = false;
