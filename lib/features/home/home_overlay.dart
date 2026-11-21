@@ -34,6 +34,18 @@ class HomeOverlay extends StatelessWidget {
       '${profile.daily.where((q) => q.done).length}/${profile.daily.length}';
 
   /// Es gibt ein Stück, das mit dem Kontostand bezahlbar ist.
+  /// Fortschritt je Tagesaufgabe, 0 bis 1.
+  List<double> get _dailyProgress => [
+    for (final q in profile.daily)
+      if (q.done)
+        1.0
+      else
+        (q.progress / (Quests.byId[q.id]?.target ?? 1)).clamp(0.0, 1.0),
+  ];
+
+  bool get _dailyAllDone =>
+      profile.daily.isNotEmpty && profile.daily.every((q) => q.done);
+
   bool get _canBuy =>
       Cosmetics.all.any((c) => !profile.owns(c.id) && profile.coins >= c.price);
 
@@ -102,17 +114,8 @@ class HomeOverlay extends StatelessWidget {
             child: Column(
               children: [
                 if (stats.rounds > 0 && savedRound == null) ...[
-                  Text(
-                    t(
-                      'BESTWERT ${stats.bestScore}   ·   HÖHE ${stats.bestHeight}',
-                      'BEST ${stats.bestScore}   ·   HEIGHT ${stats.bestHeight}',
-                    ),
-                    style: fsLabel.copyWith(
-                      fontSize: 12.5,
-                      color: FsColors.onBackground,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                  _BestCard(score: stats.bestScore, height: stats.bestHeight),
+                  const SizedBox(height: 12),
                 ],
                 if (savedRound != null && onContinue != null) ...[
                   PillButton(
@@ -158,6 +161,8 @@ class HomeOverlay extends StatelessWidget {
                         Icons.flag_rounded,
                         t('AUFGABEN', 'QUESTS'),
                         badge: profile.daily.isEmpty ? null : _dailyDone,
+                        segments: profile.daily.isEmpty ? null : _dailyProgress,
+                        complete: _dailyAllDone,
                         onTap: onQuests,
                       ),
                     ),
@@ -181,6 +186,91 @@ class HomeOverlay extends StatelessWidget {
   }
 }
 
+/// Bestwert und größte Höhe auf einer eigenen Karte, damit sie vor jeder
+/// Plattform und jedem Hintergrund lesbar bleiben.
+class _BestCard extends StatelessWidget {
+  const _BestCard({required this.score, required this.height});
+
+  final int score, height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: t(
+        'Bestwert $score, größte Höhe $height',
+        'Best score $score, best height $height',
+      ),
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: FsColors.cream,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14202B38),
+              blurRadius: 6,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _stat(
+              Icons.emoji_events_rounded,
+              FsColors.highlight,
+              t('BESTWERT', 'BEST'),
+              formatInt(score),
+            ),
+            Container(
+              width: 1,
+              height: 14,
+              margin: const EdgeInsets.symmetric(horizontal: 12),
+              color: const Color(0x22202B38),
+            ),
+            _stat(
+              Icons.layers_rounded,
+              FsColors.mint,
+              t('HÖHE', 'HEIGHT'),
+              '$height',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _stat(IconData icon, Color tint, String label, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(icon, size: 16, color: tint),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: fsLabel.copyWith(
+            fontSize: 10,
+            letterSpacing: 1.1,
+            color: FsColors.navy.withValues(alpha: 0.55),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14.5,
+            height: 1.1,
+            fontWeight: FontWeight.w900,
+            color: FsColors.navy,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Nebenaktion im Hauptmenü (Aufgaben, Shop).
 class _Secondary extends StatelessWidget {
   const _Secondary(
@@ -189,7 +279,15 @@ class _Secondary extends StatelessWidget {
     required this.onTap,
     this.badge,
     this.dot = false,
+    this.segments,
+    this.complete = false,
   });
+
+  /// Fortschritt je Aufgabe (0 bis 1), als schmale Balken unter der Schrift.
+  final List<double>? segments;
+
+  /// Alles erledigt: Zähler und Balken in der Erfolgsfarbe.
+  final bool complete;
 
   /// Kleiner Punkt: hier gibt es etwas Neues.
   final bool dot;
@@ -206,10 +304,10 @@ class _Secondary extends StatelessWidget {
       child: Pressable(
         onTap: onTap,
         child: Container(
-          height: 52,
+          height: 56,
           decoration: BoxDecoration(
             color: FsColors.cream,
-            borderRadius: BorderRadius.circular(26),
+            borderRadius: BorderRadius.circular(28),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x22202B38),
@@ -218,51 +316,90 @@ class _Secondary extends StatelessWidget {
               ),
             ],
           ),
-          child: Row(
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 19, color: FsColors.navy),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: fsLabel.copyWith(fontSize: 12.5, color: FsColors.navy),
-              ),
-              if (dot) ...[
-                const SizedBox(width: 8),
-                Container(
-                  width: 9,
-                  height: 9,
-                  decoration: const BoxDecoration(
-                    color: FsColors.highlight,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ],
-              if (badge != null) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: FsColors.navy,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    badge!,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+              _line(),
+              if (segments != null) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final (i, v) in segments!.indexed) ...[
+                      if (i > 0) const SizedBox(width: 4),
+                      _segment(v),
+                    ],
+                  ],
                 ),
               ],
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _segment(double v) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(2.5),
+      child: SizedBox(
+        width: 30,
+        height: 5,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const ColoredBox(color: Color(0x1F202B38)),
+            FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: v,
+              child: const ColoredBox(color: FsColors.mint),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _line() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 19, color: FsColors.navy),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: fsLabel.copyWith(fontSize: 12.5, color: FsColors.navy),
+        ),
+        if (dot) ...[
+          const SizedBox(width: 8),
+          Container(
+            width: 9,
+            height: 9,
+            decoration: const BoxDecoration(
+              color: FsColors.highlight,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+        if (badge != null) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: complete ? FsColors.mint : FsColors.navy,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              badge!,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
