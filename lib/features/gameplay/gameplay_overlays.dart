@@ -1,3 +1,5 @@
+import '../../l10n/tr.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../game/meta/rewards.dart';
@@ -50,7 +52,7 @@ class GameHud extends StatelessWidget {
             right: 26,
             top: 62,
             child: Text(
-              'NÄCHSTER',
+              t('NÄCHSTER', 'NEXT'),
               style: fsLabel.copyWith(color: FsColors.onBackgroundMuted),
             ),
           ),
@@ -94,7 +96,10 @@ class GameHud extends StatelessWidget {
                     onTap: () => onRotate(1),
                     color: FsColors.onBackground,
                     iconColor: FsColors.onBackgroundInverse,
-                    semanticLabel: 'Plattform nach links drehen',
+                    semanticLabel: t(
+                      'Plattform nach links drehen',
+                      'Rotate platform left',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -102,7 +107,7 @@ class GameHud extends StatelessWidget {
                   child: PulseRing(
                     active: tutorial == TutorialStep.drop,
                     child: PillButton(
-                      'ABLEGEN',
+                      t('ABLEGEN', 'DROP'),
                       onTap: onDrop,
                       enabled: h.canDrop,
                       height: 66,
@@ -117,7 +122,10 @@ class GameHud extends StatelessWidget {
                     onTap: () => onRotate(-1),
                     color: FsColors.onBackground,
                     iconColor: FsColors.onBackgroundInverse,
-                    semanticLabel: 'Plattform nach rechts drehen',
+                    semanticLabel: t(
+                      'Plattform nach rechts drehen',
+                      'Rotate platform right',
+                    ),
                   ),
                 ),
               ],
@@ -149,7 +157,10 @@ class _Score extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'HÖHE ${h.height}   ·   BESTWERT ${h.best}',
+          t(
+            'HÖHE ${h.height}   ·   BESTWERT ${h.best}',
+            'HEIGHT ${h.height}   ·   BEST ${h.best}',
+          ),
           style: fsLabel.copyWith(color: FsColors.onBackgroundMuted),
         ),
         const SizedBox(height: 8),
@@ -158,7 +169,7 @@ class _Score extends StatelessWidget {
           opacity: h.combo >= 1 ? 1 : 0,
           duration: const Duration(milliseconds: 180),
           child: FsChip(
-            'COMBO ${h.combo}   ×${h.multiplier.toStringAsFixed(1).replaceAll('.', ',')}',
+            'COMBO ${h.combo}   ×${formatDecimal(h.multiplier)}',
             color: fsDarkBackground.value
                 ? const Color(0xFF34435A)
                 : FsColors.navy,
@@ -181,29 +192,41 @@ class TutorialCard extends StatelessWidget {
   final TutorialStep step;
   final VoidCallback onConfirm, onSkip;
 
-  static const _texts = {
+  static Map<TutorialStep, (String, String)> get _texts => {
     TutorialStep.move: (
-      'Verschieben',
-      'Ziehe mit einem Finger, um den Stein zu bewegen.',
+      t('Verschieben', 'Move'),
+      t(
+        'Ziehe mit einem Finger, um den Stein zu bewegen.',
+        'Drag with one finger to move the piece.',
+      ),
     ),
     TutorialStep.drop: (
-      'Ablegen',
-      'Tippe auf ABLEGEN – oder einfach irgendwo auf den Bildschirm.',
+      t('Ablegen', 'Drop'),
+      t(
+        'Tippe auf ABLEGEN – oder einfach irgendwo auf den Bildschirm.',
+        'Tap DROP – or simply anywhere on the screen.',
+      ),
     ),
     TutorialStep.rotate: (
-      'Drehen',
-      'Drehe die Plattform. Der Stein dreht sich nie mit – so änderst du, wie er liegt.',
+      t('Drehen', 'Rotate'),
+      t(
+        'Drehe die Plattform. Der Stein dreht sich nie mit – so änderst du, wie er liegt.',
+        'Rotate the platform. The piece never turns with it – that is how you change the way it lands.',
+      ),
     ),
     TutorialStep.rules: (
-      'Punkte',
-      'Volle Auflage gibt Bonus und Combo. Bau gleichmäßig – ein Rahmen zeigt die erlaubte Höhe.',
+      t('Punkte', 'Points'),
+      t(
+        'Volle Auflage gibt Bonus und Combo. Bau gleichmäßig – ein Rahmen zeigt die erlaubte Höhe.',
+        'Full support gives a bonus and builds your combo. Build evenly – a frame shows the allowed height.',
+      ),
     ),
   };
 
   @override
   Widget build(BuildContext context) {
-    final t = _texts[step];
-    if (t == null) return const SizedBox.shrink();
+    final texts = _texts[step];
+    if (texts == null) return const SizedBox.shrink();
     final index = TutorialStep.values.indexOf(step);
     return SafeArea(
       child: Align(
@@ -223,25 +246,28 @@ class TutorialCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '${index + 1} / 4   ${t.$1.toUpperCase()}',
+                        '${index + 1} / 4   ${texts.$1.toUpperCase()}',
                         style: fsLabel,
                       ),
                       const Spacer(),
                       Pressable(
                         onTap: onSkip,
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
                             vertical: 4,
                             horizontal: 4,
                           ),
-                          child: Text('ÜBERSPRINGEN', style: fsLabel),
+                          child: Text(
+                            t('ÜBERSPRINGEN', 'SKIP'),
+                            style: fsLabel,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    t.$2,
+                    texts.$2,
                     style: const TextStyle(
                       fontSize: 16,
                       height: 1.3,
@@ -346,10 +372,10 @@ class PauseOverlay extends StatelessWidget {
                       style: fsLabel.copyWith(fontSize: 13, letterSpacing: 2.5),
                     ),
                     const SizedBox(height: 16),
-                    PillButton('WEITER', onTap: onResume),
+                    PillButton(t('WEITER', 'RESUME'), onTap: onResume),
                     const SizedBox(height: 10),
                     PillButton(
-                      'NEU STARTEN',
+                      t('NEU STARTEN', 'RESTART'),
                       onTap: onRestart,
                       color: FsColors.navy,
                       textColor: FsColors.cream,
@@ -363,7 +389,7 @@ class PauseOverlay extends StatelessWidget {
                           settings.sound
                               ? Icons.volume_up_rounded
                               : Icons.volume_off_rounded,
-                          'Ton',
+                          t('Ton', 'Sound'),
                           settings.sound,
                           () => settings.sound = !settings.sound,
                         ),
@@ -373,7 +399,12 @@ class PauseOverlay extends StatelessWidget {
                           settings.haptics,
                           () => settings.haptics = !settings.haptics,
                         ),
-                        _IconToggle(Icons.home_rounded, 'Menü', true, onHome),
+                        _IconToggle(
+                          Icons.home_rounded,
+                          t('Menü', 'Menu'),
+                          true,
+                          onHome,
+                        ),
                       ],
                     ),
                   ],
@@ -486,13 +517,13 @@ class ResultsCard extends StatelessWidget {
                                 const SizedBox(height: 14),
                                 Row(
                                   children: [
-                                    _Tile('HÖHE', '${r.height}'),
+                                    _Tile(t('HÖHE', 'HEIGHT'), '${r.height}'),
                                     const SizedBox(width: 8),
-                                    _Tile('STEINE', '${r.pieces}'),
+                                    _Tile(t('STEINE', 'PIECES'), '${r.pieces}'),
                                     const SizedBox(width: 8),
                                     _Tile('COMBO', '${r.bestCombo}'),
                                     const SizedBox(width: 8),
-                                    _Tile('ZEIT', _time(r.seconds)),
+                                    _Tile(t('ZEIT', 'TIME'), _time(r.seconds)),
                                   ],
                                 ),
                                 if (r.blockedPiece != null) ...[
@@ -510,8 +541,14 @@ class ResultsCard extends StatelessWidget {
                                             radius: 22,
                                             child: _AdOffer(
                                               icon: Icons.replay_rounded,
-                                              title: 'Weiterspielen',
-                                              subtitle: 'Stein tauschen',
+                                              title: t(
+                                                'Weiterspielen',
+                                                'Continue',
+                                              ),
+                                              subtitle: t(
+                                                'Stein tauschen',
+                                                'Swap the piece',
+                                              ),
                                               primary: true,
                                               onTap: onRevive!,
                                             ),
@@ -524,15 +561,27 @@ class ResultsCard extends StatelessWidget {
                                       if (coinsDoubled)
                                         Expanded(
                                           child: _AdOffer(
-                                            title: '+$bonus Münzen',
-                                            subtitle: 'gutgeschrieben',
+                                            title: t(
+                                              '+$bonus Münzen',
+                                              '+$bonus coins',
+                                            ),
+                                            subtitle: t(
+                                              'gutgeschrieben',
+                                              'added',
+                                            ),
                                           ),
                                         )
                                       else if (onDoubleCoins != null)
                                         Expanded(
                                           child: _AdOffer(
-                                            title: '+$bonus Münzen',
-                                            subtitle: 'Münzen verdoppeln',
+                                            title: t(
+                                              '+$bonus Münzen',
+                                              '+$bonus coins',
+                                            ),
+                                            subtitle: t(
+                                              'Münzen verdoppeln',
+                                              'Double your coins',
+                                            ),
                                             onTap: onDoubleCoins!,
                                           ),
                                         ),
@@ -561,12 +610,12 @@ class ResultsCard extends StatelessWidget {
                                     size: 58,
                                     color: const Color(0xFFE4DFD4),
                                     iconColor: FsColors.navy,
-                                    semanticLabel: 'Hauptmenü',
+                                    semanticLabel: t('Hauptmenü', 'Main menu'),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: PillButton(
-                                      'NOCHMAL',
+                                      t('NOCHMAL', 'PLAY AGAIN'),
                                       onTap: onRestart,
                                       height: 58,
                                     ),
@@ -579,7 +628,7 @@ class ResultsCard extends StatelessWidget {
                                   child: Padding(
                                     padding: const EdgeInsets.only(top: 12),
                                     child: Text(
-                                      'WERBUNG ENTFERNEN',
+                                      t('WERBUNG ENTFERNEN', 'REMOVE ADS'),
                                       style: fsLabel.copyWith(fontSize: 11.5),
                                     ),
                                   ),
@@ -629,10 +678,10 @@ class _ScoreHeader extends StatelessWidget {
               ],
               Text(
                 best
-                    ? 'NEUER BESTWERT'
+                    ? t('NEUER BESTWERT', 'NEW HIGH SCORE')
                     : r.reason == GameOverReason.summit
-                    ? 'GIPFEL ERREICHT'
-                    : 'RUNDE BEENDET',
+                    ? t('GIPFEL ERREICHT', 'SUMMIT REACHED')
+                    : t('RUNDE BEENDET', 'ROUND OVER'),
                 style: fsLabel.copyWith(
                   fontSize: 11.5,
                   letterSpacing: 1.8,
@@ -660,7 +709,12 @@ class _ScoreHeader extends StatelessWidget {
           ),
         ),
         Text(
-          best ? 'Punkte' : 'Punkte  ·  Bestwert ${r.stats.bestScore}',
+          best
+              ? t('Punkte', 'Points')
+              : t(
+                  'Punkte  ·  Bestwert ${r.stats.bestScore}',
+                  'Points  ·  Best ${r.stats.bestScore}',
+                ),
           style: const TextStyle(
             fontSize: 13.5,
             fontWeight: FontWeight.w700,
@@ -716,11 +770,18 @@ class _BlockedInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final why = switch (r.blockCause!) {
-      BlockCause.tooUneven =>
+      BlockCause.tooUneven => t(
         'Überall wäre der Turm mehr als ${r.maxSpread} Ebenen ungleich hoch geworden.',
-      BlockCause.unsupported => 'Überall hätte er zu wenig aufgelegen.',
-      BlockCause.both =>
+        'Everywhere the tower would have become more than ${r.maxSpread} levels uneven.',
+      ),
+      BlockCause.unsupported => t(
+        'Überall hätte er zu wenig aufgelegen.',
+        'Everywhere it would have had too little support.',
+      ),
+      BlockCause.both => t(
         'Zu wenig Auflage oder mehr als ${r.maxSpread} Ebenen Höhenunterschied.',
+        'Too little support or more than ${r.maxSpread} levels of height difference.',
+      ),
     };
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
@@ -740,9 +801,12 @@ class _BlockedInfo extends StatelessWidget {
             child: Text.rich(
               TextSpan(
                 children: [
-                  const TextSpan(
-                    text: 'Dieser Stein passte nirgends. ',
-                    style: TextStyle(fontWeight: FontWeight.w800),
+                  TextSpan(
+                    text: t(
+                      'Dieser Stein passte nirgends. ',
+                      'This piece did not fit anywhere. ',
+                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                   TextSpan(text: why),
                 ],
@@ -872,7 +936,7 @@ class _AdOffer extends StatelessWidget {
                       Icon(Icons.play_arrow_rounded, size: 14, color: fg),
                       const SizedBox(width: 2),
                       Text(
-                        'WERBUNG',
+                        t('WERBUNG', 'AD'),
                         style: TextStyle(
                           fontSize: 9.5,
                           fontWeight: FontWeight.w800,
@@ -915,7 +979,10 @@ class _AdOffer extends StatelessWidget {
     if (done) return card;
     return Semantics(
       button: true,
-      label: '$title. $subtitle. Werbung ansehen',
+      label: t(
+        '$title. $subtitle. Werbung ansehen',
+        '$title. $subtitle. Watch an ad',
+      ),
       child: Pressable(onTap: onTap!, child: card),
     );
   }

@@ -1,3 +1,5 @@
+import '../../l10n/tr.dart';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -42,11 +44,11 @@ Future<void> showSettingsSheet(
             shrinkWrap: true,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
             children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(8, 0, 8, 14),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 14),
                 child: Text(
-                  'Einstellungen',
-                  style: TextStyle(
+                  t('Einstellungen', 'Settings'),
+                  style: const TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
                     color: FsColors.navy,
@@ -61,11 +63,16 @@ Future<void> showSettingsSheet(
                 ),
                 const SizedBox(height: 14),
               ],
-              _Group('SPIEL', [
-                _Toggle(Icons.volume_up_rounded, 'Ton', settings.sound, (v) {
-                  settings.sound = v;
-                  onTap();
-                }),
+              _Group(t('SPIEL', 'GAME'), [
+                _Toggle(
+                  Icons.volume_up_rounded,
+                  t('Ton', 'Sound'),
+                  settings.sound,
+                  (v) {
+                    settings.sound = v;
+                    onTap();
+                  },
+                ),
                 _Toggle(
                   Icons.vibration_rounded,
                   'Vibration',
@@ -77,7 +84,7 @@ Future<void> showSettingsSheet(
                 ),
                 _Toggle(
                   Icons.school_rounded,
-                  'Tutorial beim nächsten Start',
+                  t('Tutorial beim nächsten Start', 'Show tutorial next time'),
                   !settings.tutorialDone,
                   (v) {
                     settings.tutorialDone = !v;
@@ -88,16 +95,20 @@ Future<void> showSettingsSheet(
               const SizedBox(height: 14),
               _StatsCard(stats),
               const SizedBox(height: 14),
-              _Group('RECHTLICHES', [
+              _Group(t('RECHTLICHES', 'LEGAL'), [
                 if (onPrivacyOptions != null)
-                  _Link(Icons.tune_rounded, 'Datenschutz-Einstellungen', () {
-                    onTap();
-                    Navigator.of(context).pop();
-                    onPrivacyOptions();
-                  }),
+                  _Link(
+                    Icons.tune_rounded,
+                    t('Datenschutz-Einstellungen', 'Privacy settings'),
+                    () {
+                      onTap();
+                      Navigator.of(context).pop();
+                      onPrivacyOptions();
+                    },
+                  ),
                 _Link(
                   Icons.shield_outlined,
-                  'Datenschutzerklärung',
+                  t('Datenschutzerklärung', 'Privacy policy'),
                   () => _open('flipstack/datenschutz/'),
                 ),
                 _Link(
@@ -107,7 +118,7 @@ Future<void> showSettingsSheet(
                 ),
                 _Link(
                   Icons.info_outline_rounded,
-                  'Impressum',
+                  t('Impressum', 'Legal notice'),
                   () => _open('impressum/'),
                 ),
               ]),
@@ -151,7 +162,9 @@ class _Premium extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: owned ? 'Werbefrei, gekauft' : 'Werbefrei kaufen',
+      label: owned
+          ? t('Werbefrei, gekauft', 'Ad-free, purchased')
+          : t('Werbefrei kaufen', 'Buy ad-free'),
       child: Pressable(
         onTap: onTap,
         child: Container(
@@ -191,9 +204,9 @@ class _Premium extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Werbefrei',
-                      style: TextStyle(
+                    Text(
+                      t('Werbefrei', 'Ad-Free'),
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
@@ -202,8 +215,14 @@ class _Premium extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       owned
-                          ? 'Aktiv. Danke für deine Unterstützung'
-                          : 'Keine Werbung zwischen den Runden',
+                          ? t(
+                              'Aktiv. Danke für deine Unterstützung',
+                              'Active. Thank you for your support',
+                            )
+                          : t(
+                              'Keine Werbung zwischen den Runden',
+                              'No ads between rounds',
+                            ),
                       style: const TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w500,
@@ -225,7 +244,7 @@ class _Premium extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    price ?? 'Ansehen',
+                    price ?? t('Ansehen', 'View'),
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
@@ -395,15 +414,15 @@ class _StatsCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(8, 0, 8, 8),
-          child: Text('STATISTIK', style: fsLabel),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+          child: Text(t('STATISTIK', 'STATS'), style: fsLabel),
         ),
         Row(
           children: [
-            tile('BESTWERT', '${stats.bestScore}'),
+            tile(t('BESTWERT', 'BEST'), '${stats.bestScore}'),
             const SizedBox(width: 8),
-            tile('HÖHE', '${stats.bestHeight}'),
+            tile(t('HÖHE', 'HEIGHT'), '${stats.bestHeight}'),
             const SizedBox(width: 8),
             tile('COMBO', '${stats.bestCombo}'),
           ],
@@ -411,11 +430,11 @@ class _StatsCard extends StatelessWidget {
         const SizedBox(height: 8),
         Row(
           children: [
-            tile('RUNDEN', '${stats.rounds}'),
+            tile(t('RUNDEN', 'ROUNDS'), '${stats.rounds}'),
             const SizedBox(width: 8),
-            tile('SCHNITT', '${stats.averageScore}'),
+            tile(t('SCHNITT', 'AVERAGE'), '${stats.averageScore}'),
             const SizedBox(width: 8),
-            tile('STEINE', '${stats.totalPieces}'),
+            tile(t('STEINE', 'PIECES'), '${stats.totalPieces}'),
           ],
         ),
       ],

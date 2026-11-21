@@ -1,7 +1,10 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app/game_screen.dart';
+import 'l10n/tr.dart';
 
 // Debug-Schalter: --dart-define=FS_FPS=true       FPS-Anzeige
 //                 --dart-define=FS_AUTOPLAY=true  spielt selbst (für Tests)
@@ -27,6 +30,14 @@ const _iap = String.fromEnvironment('FS_IAP');
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // Deutsch auf deutschsprachigen Geräten, sonst Englisch.
+  // Zum Testen: --dart-define=FS_LANG=en
+  const forced = String.fromEnvironment('FS_LANG');
+  setLanguageFromCode(
+    forced.isNotEmpty
+        ? forced
+        : PlatformDispatcher.instance.locale.languageCode,
+  );
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(
     MaterialApp(

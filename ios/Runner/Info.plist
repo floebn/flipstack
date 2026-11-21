@@ -14,6 +14,11 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>de</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>flipstack</string>
 	<key>CFBundlePackageType</key>
@@ -31,7 +36,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSUserTrackingUsageDescription</key>
-	<string>Mit deiner Erlaubnis kann Werbung besser zu deinen Interessen passen. Das Spiel funktioniert auch ohne.</string>
+	<string>With your permission, ads can be more relevant to your interests. The game works without it too.</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>

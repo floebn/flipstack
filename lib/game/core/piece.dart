@@ -1,3 +1,5 @@
+import '../../l10n/tr.dart';
+
 /// Form eines Bausteins aus Einheitswürfeln, in kamerafester Ausrichtung.
 /// Zellen sind (dx, dy, dz) mit dx, dy, dz >= 0. Bausteine werden nie gedreht.
 class PieceShape {
@@ -219,15 +221,43 @@ class DifficultyCurve {
   /// Was sich beim Erreichen von [height] ändert (für die Ansage im Spiel),
   /// oder `null`.
   String? changeAt(int height) {
-    if (height == fivers1) return 'Bald kommen Formen aus fünf Würfeln';
-    if (height == fivers2) return 'Bald kommen noch sperrigere Formen';
-    if (height == noSingle) return 'Bald gibt es keine Einzelwürfel mehr';
-    if (height == noDomino) return 'Bald gibt es keine Doppelblöcke mehr';
-    if (height == doubleFivers) return 'Bald kommen die Fünfer doppelt so oft';
+    if (height == fivers1) {
+      return t(
+        'Bald kommen Formen aus fünf Würfeln',
+        'Five-cube shapes are coming soon',
+      );
+    }
+    if (height == fivers2) {
+      return t(
+        'Bald kommen noch sperrigere Formen',
+        'Even bulkier shapes are coming soon',
+      );
+    }
+    if (height == noSingle) {
+      return t(
+        'Bald gibt es keine Einzelwürfel mehr',
+        'Single cubes will stop coming soon',
+      );
+    }
+    if (height == noDomino) {
+      return t(
+        'Bald gibt es keine Doppelblöcke mehr',
+        'Double blocks will stop coming soon',
+      );
+    }
+    if (height == doubleFivers) {
+      return t(
+        'Bald kommen die Fünfer doppelt so oft',
+        'Five-cube shapes will come twice as often soon',
+      );
+    }
     if (height >= dropFrom &&
         (height - dropFrom) % dropEvery == 0 &&
         lateDropCount(height) > lateDropCount(height - 1)) {
-      return 'Bald fällt ein weiterer einfacher Stein weg';
+      return t(
+        'Bald fällt ein weiterer einfacher Stein weg',
+        'Another easy piece will stop coming soon',
+      );
     }
     return null;
   }

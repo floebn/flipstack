@@ -343,6 +343,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     if (!_persistRounds || _tutorial != null) return;
     final snap = _game.snapshot();
     if (snap == null) return;
+    // Eine Runde ohne abgelegten Stein lohnt das Fortsetzen nicht
+    final session = snap['session'];
+    if (session is Map && session['pieces'] == 0) return;
     _savedRound = snap;
     SharedPreferences.getInstance()
         .then((p) => p.setString(_roundKey, jsonEncode(snap)))
@@ -371,6 +374,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       }
     }
     final score = session['score'];
+    if (height == 0) return null;
     return (height: height, score: score is int ? score : 0);
   }
 

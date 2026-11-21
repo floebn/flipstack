@@ -354,3 +354,14 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Neue Zähler im Profil (Spieltage, erfüllte Aufgaben, Designs, Bestwerte je Runde); die Runde liefert dafür „Höhe ohne Combo-Verlust“ und „Drehungen bei Höhe 20“.
 - Aus dem Vorschlag gestrichen: „Über den Berg“ (wäre dasselbe wie Höhe 40).
 - Geprüft: 99 Tests, Aufgabenblatt im Simulator. Nicht geprüft: Ergebnisbildschirm mit vielen Erfolgen auf einmal, Gerät.
+
+## Zweisprachig: Deutsch und Englisch (22.11.2026)
+
+- Entscheidungen des Auftraggebers: „Werbefrei“ 4,99 € in Deutschland, keine Kinder-App, Veröffentlichung weltweit.
+- `lib/l10n/tr.dart`: Deutsch auf deutschsprachigen Geräten, sonst Englisch. Texte stehen an Ort und Stelle als `t('deutsch', 'english')`, auch in der Spiellogik (Aufgaben, 55 Erfolge, Designnamen, Ansagen). Zahlen mit Tausender- und Dezimaltrennzeichen der Sprache.
+- iOS: `CFBundleLocalizations` (en, de), Text der Tracking-Abfrage je Sprache in `InfoPlist.strings`.
+- Testschalter `--dart-define=FS_LANG=en`.
+- Hauptmenü bietet „Runde fortsetzen“ nicht mehr für eine Runde ohne abgelegten Stein an.
+- Geprüft: 102 Tests (Spracherkennung, Zahlenformat, kein deutscher Text in der Spiellogik auf Englisch). Im Simulator auf Englisch: Hauptmenü, Aufgabenblatt, Einstellungen.
+- Nicht geprüft auf Englisch: Spielanzeige, Tutorial, Shop, Ergebnis, Kaufblatt; Tracking-Dialog auf Englisch; Textlängen auf kleinen Displays.
+- Offen für die weltweite Veröffentlichung: englische Seiten der Website (die Links in der App führen noch auf die deutschen), Englisch in der AdMob-Einwilligungsabfrage, englische Texte in App Store Connect (App und In-App-Kauf), Datenschutz-Manifest.

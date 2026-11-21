@@ -1,3 +1,5 @@
+import '../l10n/tr.dart';
+
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -638,7 +640,7 @@ class FlipstackGame extends FlameGame {
       for (var h = _announcedHeight + 1; h <= s.height; h++) {
         final change = s.curve.changeAt(h);
         if (change != null) {
-          _notice = 'Höhe $h · $change';
+          _notice = t('Höhe $h · $change', 'Height $h · $change');
           _noticeUntil = _time + 4.5;
         }
       }
@@ -647,7 +649,7 @@ class FlipstackGame extends FlameGame {
     if (!_recordAnnounced && _recordHeight >= 8 && s.height > _recordHeight) {
       _recordAnnounced = true;
       if (_time >= _noticeUntil) {
-        _notice = 'Neue Rekordhöhe';
+        _notice = t('Neue Rekordhöhe', 'New record height');
         _noticeUntil = _time + 3;
       }
     }
@@ -713,9 +715,12 @@ class FlipstackGame extends FlameGame {
   /// Was sich mit der erreichten Etappe ändert.
   String _stageNotice(PlacementScore sc) {
     final change = sc.newSpread != null
-        ? 'Ab jetzt höchstens ${sc.newSpread} Ebenen Unterschied'
-        : _session.curve.changeAt(sc.stage) ?? 'Weiter so';
-    return 'Etappe ${sc.stage} · $change';
+        ? t(
+            'Ab jetzt höchstens ${sc.newSpread} Ebenen Unterschied',
+            'From now on at most ${sc.newSpread} levels of difference',
+          )
+        : _session.curve.changeAt(sc.stage) ?? t('Weiter so', 'Keep going');
+    return t('Etappe ${sc.stage} · $change', 'Stage ${sc.stage} · $change');
   }
 
   void _spawnEffects(PlacementScore sc) {
@@ -738,12 +743,29 @@ class FlipstackGame extends FlameGame {
     }
 
     pop('+${sc.placement}$mult');
-    if (sc.layers > 0) pop('Ebene voll  +${sc.layerBonus}', accent: true);
+    if (sc.layers > 0) {
+      pop(
+        t('Ebene voll  +${sc.layerBonus}', 'Layer full  +${sc.layerBonus}'),
+        accent: true,
+      );
+    }
     if (sc.milestones > 0) {
-      pop('Höhe ${_session.height}  +${sc.milestoneBonus}', accent: true);
+      pop(
+        t(
+          'Höhe ${_session.height}  +${sc.milestoneBonus}',
+          'Height ${_session.height}  +${sc.milestoneBonus}',
+        ),
+        accent: true,
+      );
     }
     if (sc.stage > 0) {
-      pop('Etappe ${sc.stage}  +${sc.stageBonus}', accent: true);
+      pop(
+        t(
+          'Etappe ${sc.stage}  +${sc.stageBonus}',
+          'Stage ${sc.stage}  +${sc.stageBonus}',
+        ),
+        accent: true,
+      );
     }
 
     // Staub am Fuss des Bausteins
@@ -767,7 +789,7 @@ class FlipstackGame extends FlameGame {
     }
   }
 
-  static String _fmt(double m) => m.toStringAsFixed(1).replaceAll('.', ',');
+  static String _fmt(double m) => formatDecimal(m);
 
   void _autoplayStep(double dt) {
     final s = _session;
@@ -822,15 +844,23 @@ class FlipstackGame extends FlameGame {
       hint: !preview || p.isValid
           ? null
           : switch (p.error) {
-              PlacementError.unsupported => 'Liegt zu wenig auf',
-              PlacementError.tooUneven =>
+              PlacementError.unsupported => t(
+                'Liegt zu wenig auf',
+                'Too little support',
+              ),
+              PlacementError.tooUneven => t(
                 'Zu hoch – erst die markierten Felder füllen',
+                'Too high – fill the marked squares first',
+              ),
               _ => null,
             },
       warning: preview && s.placementsLeft < warnBelow
           ? (s.placementsLeft == 1
-                ? 'Nur noch 1 Platz'
-                : 'Nur noch ${s.placementsLeft} Plätze')
+                ? t('Nur noch 1 Platz', 'Only 1 spot left')
+                : t(
+                    'Nur noch ${s.placementsLeft} Plätze',
+                    'Only ${s.placementsLeft} spots left',
+                  ))
           : null,
       notice: _time < _noticeUntil ? _notice : null,
       result: _overT >= 1 ? _result : null,

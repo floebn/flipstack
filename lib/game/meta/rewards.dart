@@ -1,3 +1,5 @@
+import '../../l10n/tr.dart';
+
 import 'dart:math';
 
 /// Belohnungssystem (Masterbrief Abschnitt 6): Münzen, Aufgaben, Erfolge und
@@ -106,17 +108,35 @@ class QuestDef {
   };
 
   String get text => switch (kind) {
-    QuestKind.pieces => 'Lege $target Bausteine ab',
-    QuestKind.rotations => 'Drehe die Plattform $target-mal',
-    QuestKind.score => 'Sammle $target Punkte',
-    QuestKind.rounds => 'Spiele $target Runden',
-    QuestKind.layers => 'Fülle $target Ebenen vollständig',
-    QuestKind.cleanPlacements => 'Lege $target Bausteine sauber ab',
-    QuestKind.coins => 'Verdiene $target Münzen',
-    QuestKind.height => 'Erreiche Höhe $target',
-    QuestKind.combo => 'Erreiche eine Combo von $target',
-    QuestKind.roundScore => 'Erreiche $target Punkte in einer Runde',
-    QuestKind.heightRounds => 'Erreiche $target-mal Höhe $param',
+    QuestKind.pieces => t('Lege $target Bausteine ab', 'Place $target pieces'),
+    QuestKind.rotations => t(
+      'Drehe die Plattform $target-mal',
+      'Rotate the platform $target times',
+    ),
+    QuestKind.score => t('Sammle $target Punkte', 'Score $target points'),
+    QuestKind.rounds => t('Spiele $target Runden', 'Play $target rounds'),
+    QuestKind.layers => t(
+      'Fülle $target Ebenen vollständig',
+      'Complete $target layers',
+    ),
+    QuestKind.cleanPlacements => t(
+      'Lege $target Bausteine sauber ab',
+      'Place $target pieces cleanly',
+    ),
+    QuestKind.coins => t('Verdiene $target Münzen', 'Earn $target coins'),
+    QuestKind.height => t('Erreiche Höhe $target', 'Reach height $target'),
+    QuestKind.combo => t(
+      'Erreiche eine Combo von $target',
+      'Reach a combo of $target',
+    ),
+    QuestKind.roundScore => t(
+      'Erreiche $target Punkte in einer Runde',
+      'Score $target points in one round',
+    ),
+    QuestKind.heightRounds => t(
+      'Erreiche $target-mal Höhe $param',
+      'Reach height $param $target times',
+    ),
   };
 
   /// Beitrag einer Runde ([coins] = in dieser Runde verdiente Rundenmünzen).
@@ -231,12 +251,7 @@ class Achievement {
 abstract final class Achievements {
   static const _roman = ['', 'I', 'II', 'III', 'IV', 'V'];
 
-  static String _n(int v) {
-    final t = v.toString();
-    return t.length <= 3
-        ? t
-        : '${t.substring(0, t.length - 3)}.${t.substring(t.length - 3)}';
-  }
+  static String _n(int v) => formatInt(v);
 
   /// Reihe in Stufen. [ids] hält die Kennungen älterer Fassungen fest, damit
   /// bereits erreichte Erfolge erhalten bleiben.
@@ -266,10 +281,10 @@ abstract final class Achievements {
   static final int purchasable = Cosmetics.all.where((c) => c.price > 0).length;
 
   static final List<Achievement> all = [
-    const Achievement(
+    Achievement(
       'first_stack',
-      'Erster Stein',
-      'Lege deinen ersten Baustein ab',
+      t('Erster Stein', 'First Piece'),
+      t('Lege deinen ersten Baustein ab', 'Place your first piece'),
       Counter.pieces,
       1,
       20,
@@ -277,8 +292,8 @@ abstract final class Achievements {
     // --- Leistung in einer Runde
     ..._series(
       'height',
-      'Hoch hinaus',
-      (t) => 'Erreiche Höhe $t',
+      t('Hoch hinaus', 'Sky High'),
+      (n) => t('Erreiche Höhe $n', 'Reach height $n'),
       Counter.bestHeight,
       [10, 25, 40, 60, 80],
       [50, 150, 300, 500, 800],
@@ -286,8 +301,11 @@ abstract final class Achievements {
     ),
     ..._series(
       'score',
-      'Punktejäger',
-      (t) => 'Erreiche $t Punkte in einer Runde',
+      t('Punktejäger', 'Score Hunter'),
+      (n) => t(
+        'Erreiche $n Punkte in einer Runde',
+        'Score $n points in one round',
+      ),
       Counter.bestScore,
       [5000, 15000, 30000, 50000],
       [100, 250, 400, 700],
@@ -295,8 +313,8 @@ abstract final class Achievements {
     ),
     ..._series(
       'combo',
-      'Gleichgewicht',
-      (t) => 'Erreiche eine Combo von $t',
+      t('Gleichgewicht', 'Balance'),
+      (n) => t('Erreiche eine Combo von $n', 'Reach a combo of $n'),
       Counter.bestCombo,
       [10, 15, 25, 40],
       [50, 100, 250, 500],
@@ -304,40 +322,55 @@ abstract final class Achievements {
     ),
     ..._series(
       'marathon',
-      'Marathon',
-      (t) => 'Lege $t Bausteine in einer Runde ab',
+      t('Marathon', 'Marathon'),
+      (n) => t(
+        'Lege $n Bausteine in einer Runde ab',
+        'Place $n pieces in one round',
+      ),
       Counter.bestRoundPieces,
       [200, 400],
       [200, 500],
     ),
     ..._series(
       'round_layers',
-      'Ebene für Ebene',
-      (t) => 'Fülle $t Ebenen in einer Runde',
+      t('Ebene für Ebene', 'Layer by Layer'),
+      (n) => t(
+        'Fülle $n Ebenen in einer Runde',
+        'Complete $n layers in one round',
+      ),
       Counter.bestRoundLayers,
       [10, 25],
       [150, 400],
     ),
     ..._series(
       'flawless',
-      'Makellos',
-      (t) => 'Erreiche Höhe $t, ohne die Combo zu verlieren',
+      t('Makellos', 'Flawless'),
+      (n) => t(
+        'Erreiche Höhe $n, ohne die Combo zu verlieren',
+        'Reach height $n without losing your combo',
+      ),
       Counter.bestFlawlessHeight,
       [15],
       [250],
     ),
     ..._series(
       'no_help',
-      'Ohne Hilfe',
-      (t) => 'Erreiche Höhe $t ohne „Weiterspielen“',
+      t('Ohne Hilfe', 'No Help Needed'),
+      (n) => t(
+        'Erreiche Höhe $n ohne „Weiterspielen“',
+        'Reach height $n without using Continue',
+      ),
       Counter.bestHeightNoRevive,
       [40],
       [300],
     ),
-    const Achievement(
+    Achievement(
       'strategist',
-      'Stratege',
-      'Erreiche Höhe 20 mit höchstens 20 Drehungen',
+      t('Stratege', 'Strategist'),
+      t(
+        'Erreiche Höhe 20 mit höchstens 20 Drehungen',
+        'Reach height 20 with at most 20 rotations',
+      ),
       Counter.strategist,
       1,
       250,
@@ -345,8 +378,8 @@ abstract final class Achievements {
     // --- Ausdauer über alle Runden
     ..._series(
       'pieces',
-      'Baumeister',
-      (t) => 'Lege insgesamt $t Bausteine ab',
+      t('Baumeister', 'Master Builder'),
+      (n) => t('Lege insgesamt $n Bausteine ab', 'Place $n pieces in total'),
       Counter.pieces,
       [100, 1000, 5000, 20000],
       [30, 200, 400, 800],
@@ -354,8 +387,11 @@ abstract final class Achievements {
     ),
     ..._series(
       'clean',
-      'Saubere Arbeit',
-      (t) => 'Lege insgesamt $t Bausteine sauber ab',
+      t('Saubere Arbeit', 'Clean Work'),
+      (n) => t(
+        'Lege insgesamt $n Bausteine sauber ab',
+        'Place $n pieces cleanly in total',
+      ),
       Counter.cleanPlacements,
       [100, 500, 2500, 10000],
       [50, 150, 300, 600],
@@ -363,8 +399,11 @@ abstract final class Achievements {
     ),
     ..._series(
       'layers',
-      'Lückenlos',
-      (t) => 'Fülle insgesamt $t Ebenen vollständig',
+      t('Lückenlos', 'No Gaps'),
+      (n) => t(
+        'Fülle insgesamt $n Ebenen vollständig',
+        'Complete $n layers in total',
+      ),
       Counter.layers,
       [25, 100, 500, 2000],
       [50, 150, 300, 600],
@@ -372,8 +411,11 @@ abstract final class Achievements {
     ),
     ..._series(
       'rotations',
-      'Drehmeister',
-      (t) => 'Drehe die Plattform insgesamt $t-mal',
+      t('Drehmeister', 'Spin Master'),
+      (n) => t(
+        'Drehe die Plattform insgesamt $n-mal',
+        'Rotate the platform $n times in total',
+      ),
       Counter.rotations,
       [100, 1000, 5000],
       [100, 200, 400],
@@ -381,8 +423,8 @@ abstract final class Achievements {
     ),
     ..._series(
       'rounds',
-      'Dranbleiber',
-      (t) => 'Spiele $t Runden',
+      t('Dranbleiber', 'Persistent'),
+      (n) => t('Spiele $n Runden', 'Play $n rounds'),
       Counter.rounds,
       [10, 50, 200, 500],
       [50, 200, 400, 800],
@@ -392,24 +434,24 @@ abstract final class Achievements {
     //     verpasster Tag kostet nichts.
     ..._series(
       'days',
-      'Stammgast',
-      (t) => 'Spiele an $t verschiedenen Tagen',
+      t('Stammgast', 'Regular'),
+      (n) => t('Spiele an $n verschiedenen Tagen', 'Play on $n different days'),
       Counter.daysPlayed,
       [7, 30, 100],
       [100, 300, 800],
     ),
     ..._series(
       'daily',
-      'Pflichtbewusst',
-      (t) => 'Erfülle $t Tagesaufgaben',
+      t('Pflichtbewusst', 'Dutiful'),
+      (n) => t('Erfülle $n Tagesaufgaben', 'Complete $n daily quests'),
       Counter.dailyDone,
       [10, 50, 200],
       [100, 250, 600],
     ),
     ..._series(
       'weekly',
-      'Wochenprofi',
-      (t) => 'Erfülle $t Wochenaufgaben',
+      t('Wochenprofi', 'Weekly Pro'),
+      (n) => t('Erfülle $n Wochenaufgaben', 'Complete $n weekly quests'),
       Counter.weeklyDone,
       [5, 20],
       [200, 500],
@@ -417,25 +459,28 @@ abstract final class Achievements {
     // --- Sammeln
     ..._series(
       'coins',
-      'Sparfuchs',
-      (t) => 'Verdiene insgesamt $t Münzen',
+      t('Sparfuchs', 'Saver'),
+      (n) => t('Verdiene insgesamt $n Münzen', 'Earn $n coins in total'),
       Counter.coinsEarned,
       [1000, 5000, 20000],
       [100, 250, 600],
     ),
     ..._series(
       'designs',
-      'Sammler',
-      (t) => 'Schalte $t Designs frei',
+      t('Sammler', 'Collector'),
+      (n) => t('Schalte $n Designs frei', 'Unlock $n designs'),
       Counter.designs,
       [5, 15, purchasable],
       [150, 400, 1000],
     ),
-    const Achievement(
+    Achievement(
       'styled',
-      'Stilbewusst',
-      'Spiele eine Runde mit gekauftem Material, gekaufter Plattform '
-          'und gekauftem Hintergrund',
+      t('Stilbewusst', 'Stylish'),
+      t(
+        'Spiele eine Runde mit gekauftem Material, gekaufter Plattform '
+            'und gekauftem Hintergrund',
+        'Play a round with a purchased material, platform and background',
+      ),
       Counter.styledRounds,
       1,
       150,
@@ -457,10 +502,16 @@ abstract final class Achievements {
 enum CosmeticCategory { material, blocks, background, platform, effect }
 
 class Cosmetic {
-  const Cosmetic(this.id, this.category, this.name, this.price);
+  const Cosmetic(this.id, this.category, this.nameDe, this.price, {this.en});
   final String id;
   final CosmeticCategory category;
-  final String name;
+
+  /// Deutscher Name und, falls abweichend, der englische.
+  final String nameDe;
+  final String? en;
+
+  /// Name in der aktiven Sprache.
+  String get name => t(nameDe, en ?? nameDe);
 
   /// 0 = von Anfang an vorhanden.
   final int price;
@@ -468,17 +519,65 @@ class Cosmetic {
 
 abstract final class Cosmetics {
   static const all = [
-    Cosmetic('mat_matte', CosmeticCategory.material, 'Matt', 0),
-    Cosmetic('mat_pebble', CosmeticCategory.material, 'Kiesel', 700),
-    Cosmetic('mat_plank', CosmeticCategory.material, 'Planke', 800),
-    Cosmetic('mat_facet', CosmeticCategory.material, 'Facette', 700),
-    Cosmetic('mat_concrete', CosmeticCategory.material, 'Beton', 800),
-    Cosmetic('mat_fabric', CosmeticCategory.material, 'Stoff', 1000),
-    Cosmetic('mat_ice', CosmeticCategory.material, 'Eis', 1400),
-    Cosmetic('mat_volcano', CosmeticCategory.material, 'Vulkan', 1500),
-    Cosmetic('mat_neon', CosmeticCategory.material, 'Neonglas', 1600),
-    Cosmetic('mat_stud', CosmeticCategory.material, 'Noppe', 1800),
-    Cosmetic('blocks_classic', CosmeticCategory.blocks, 'Klassik', 0),
+    Cosmetic('mat_matte', CosmeticCategory.material, 'Matt', 0, en: 'Matte'),
+    Cosmetic(
+      'mat_pebble',
+      CosmeticCategory.material,
+      'Kiesel',
+      700,
+      en: 'Pebble',
+    ),
+    Cosmetic(
+      'mat_plank',
+      CosmeticCategory.material,
+      'Planke',
+      800,
+      en: 'Plank',
+    ),
+    Cosmetic(
+      'mat_facet',
+      CosmeticCategory.material,
+      'Facette',
+      700,
+      en: 'Facet',
+    ),
+    Cosmetic(
+      'mat_concrete',
+      CosmeticCategory.material,
+      'Beton',
+      800,
+      en: 'Concrete',
+    ),
+    Cosmetic(
+      'mat_fabric',
+      CosmeticCategory.material,
+      'Stoff',
+      1000,
+      en: 'Fabric',
+    ),
+    Cosmetic('mat_ice', CosmeticCategory.material, 'Eis', 1400, en: 'Ice'),
+    Cosmetic(
+      'mat_volcano',
+      CosmeticCategory.material,
+      'Vulkan',
+      1500,
+      en: 'Magma',
+    ),
+    Cosmetic(
+      'mat_neon',
+      CosmeticCategory.material,
+      'Neonglas',
+      1600,
+      en: 'Neon Glass',
+    ),
+    Cosmetic('mat_stud', CosmeticCategory.material, 'Noppe', 1800, en: 'Stud'),
+    Cosmetic(
+      'blocks_classic',
+      CosmeticCategory.blocks,
+      'Klassik',
+      0,
+      en: 'Classic',
+    ),
     Cosmetic('blocks_arctic', CosmeticCategory.blocks, 'Arctic', 400),
     Cosmetic('blocks_forest', CosmeticCategory.blocks, 'Forest', 400),
     Cosmetic('blocks_sunset', CosmeticCategory.blocks, 'Sunset', 500),
@@ -490,28 +589,113 @@ abstract final class Cosmetics {
     Cosmetic('bg_dawn', CosmeticCategory.background, 'Dawn', 250),
     Cosmetic('bg_mist', CosmeticCategory.background, 'Mist', 350),
     Cosmetic('bg_dusk', CosmeticCategory.background, 'Dusk', 450),
-    Cosmetic('bg_forest', CosmeticCategory.background, 'Wald', 800),
-    Cosmetic('bg_autumn', CosmeticCategory.background, 'Herbst', 900),
+    Cosmetic(
+      'bg_forest',
+      CosmeticCategory.background,
+      'Wald',
+      800,
+      en: 'Forest',
+    ),
+    Cosmetic(
+      'bg_autumn',
+      CosmeticCategory.background,
+      'Herbst',
+      900,
+      en: 'Autumn',
+    ),
     Cosmetic('bg_winter', CosmeticCategory.background, 'Winter', 900),
-    Cosmetic('bg_underwater', CosmeticCategory.background, 'Unterwasser', 1100),
-    Cosmetic('bg_space', CosmeticCategory.background, 'Weltraum', 1300),
-    Cosmetic('bg_city', CosmeticCategory.background, 'Neonstadt', 1500),
-    Cosmetic('platform_slate', CosmeticCategory.platform, 'Schiefer', 0),
-    Cosmetic('platform_clay', CosmeticCategory.platform, 'Ton', 350),
-    Cosmetic('platform_moss', CosmeticCategory.platform, 'Moos', 450),
-    Cosmetic('platform_oak', CosmeticCategory.platform, 'Eiche', 800),
-    Cosmetic('platform_marble', CosmeticCategory.platform, 'Marmor', 1000),
-    Cosmetic('platform_glacier', CosmeticCategory.platform, 'Gletscher', 1300),
+    Cosmetic(
+      'bg_underwater',
+      CosmeticCategory.background,
+      'Unterwasser',
+      1100,
+      en: 'Underwater',
+    ),
+    Cosmetic(
+      'bg_space',
+      CosmeticCategory.background,
+      'Weltraum',
+      1300,
+      en: 'Space',
+    ),
+    Cosmetic(
+      'bg_city',
+      CosmeticCategory.background,
+      'Neonstadt',
+      1500,
+      en: 'Neon City',
+    ),
+    Cosmetic(
+      'platform_slate',
+      CosmeticCategory.platform,
+      'Schiefer',
+      0,
+      en: 'Slate',
+    ),
+    Cosmetic(
+      'platform_clay',
+      CosmeticCategory.platform,
+      'Ton',
+      350,
+      en: 'Clay',
+    ),
+    Cosmetic(
+      'platform_moss',
+      CosmeticCategory.platform,
+      'Moos',
+      450,
+      en: 'Moss',
+    ),
+    Cosmetic(
+      'platform_oak',
+      CosmeticCategory.platform,
+      'Eiche',
+      800,
+      en: 'Oak',
+    ),
+    Cosmetic(
+      'platform_marble',
+      CosmeticCategory.platform,
+      'Marmor',
+      1000,
+      en: 'Marble',
+    ),
+    Cosmetic(
+      'platform_glacier',
+      CosmeticCategory.platform,
+      'Gletscher',
+      1300,
+      en: 'Glacier',
+    ),
     Cosmetic(
       'platform_future',
       CosmeticCategory.platform,
       'Futuristisch',
       1500,
+      en: 'Futuristic',
     ),
-    Cosmetic('platform_island', CosmeticCategory.platform, 'Insel', 1700),
-    Cosmetic('fx_dust', CosmeticCategory.effect, 'Staub', 0),
-    Cosmetic('fx_confetti', CosmeticCategory.effect, 'Konfetti', 300),
-    Cosmetic('fx_shards', CosmeticCategory.effect, 'Splitter', 500),
+    Cosmetic(
+      'platform_island',
+      CosmeticCategory.platform,
+      'Insel',
+      1700,
+      en: 'Island',
+    ),
+    Cosmetic('fx_dust', CosmeticCategory.effect, 'Staub', 0, en: 'Dust'),
+    Cosmetic(
+      'fx_confetti',
+      CosmeticCategory.effect,
+      'Konfetti',
+      300,
+      en: 'Confetti',
+    ),
+    Cosmetic(
+      'fx_shards',
+      CosmeticCategory.effect,
+      'Splitter',
+      500,
+      en: 'Shards',
+    ),
   ];
 
   static final Map<String, Cosmetic> byId = {for (final c in all) c.id: c};

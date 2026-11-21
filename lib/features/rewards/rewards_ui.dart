@@ -1,3 +1,5 @@
+import '../../l10n/tr.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../game/meta/rewards.dart';
@@ -37,7 +39,7 @@ class CoinBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '$coins Münzen',
+      label: t('$coins Münzen', '$coins coins'),
       child: Container(
         padding: const EdgeInsets.fromLTRB(9, 6, 14, 6),
         decoration: BoxDecoration(
@@ -150,13 +152,18 @@ Future<void> _sheet(
 String _untilMidnight(DateTime now) {
   final left = DateTime(now.year, now.month, now.day + 1).difference(now);
   return left.inHours >= 1
-      ? 'neu in ${left.inHours} Std.'
-      : 'neu in ${left.inMinutes + 1} Min.';
+      ? t('neu in ${left.inHours} Std.', 'new in ${left.inHours} h')
+      : t(
+          'neu in ${left.inMinutes + 1} Min.',
+          'new in ${left.inMinutes + 1} min',
+        );
 }
 
 String _untilMonday(DateTime now) {
   final days = 8 - now.weekday;
-  return days == 1 ? 'neu morgen' : 'neu in $days Tagen';
+  return days == 1
+      ? t('neu morgen', 'new tomorrow')
+      : t('neu in $days Tagen', 'new in $days days');
 }
 
 /// Tagesaufgaben, Wochenaufgaben und Erfolge als Blatt von unten.
@@ -186,18 +193,21 @@ Future<void> showQuestsSheet(BuildContext context, ProfileController ctl) {
       done: p.achievements.contains(a.id),
     );
     return [
-      _Section('HEUTE', _untilMidnight(now), [
+      _Section(t('HEUTE', 'TODAY'), _untilMidnight(now), [
         for (final q in p.daily) _QuestRow(q),
       ]),
       const SizedBox(height: 12),
-      _Section('DIESE WOCHE', _untilMonday(now), [
+      _Section(t('DIESE WOCHE', 'THIS WEEK'), _untilMonday(now), [
         for (final q in p.weekly) _QuestRow(q),
       ]),
       const SizedBox(height: 12),
       StatefulBuilder(
         builder: (context, setState) => _Section(
-          'ERFOLGE',
-          '${done.length} von ${Achievements.all.length}',
+          t('ERFOLGE', 'ACHIEVEMENTS'),
+          t(
+            '${done.length} von ${Achievements.all.length}',
+            '${done.length} of ${Achievements.all.length}',
+          ),
           [
             for (final a in showAll ? [...open, ...done] : open.take(3))
               achievement(a),
@@ -207,7 +217,9 @@ Future<void> showQuestsSheet(BuildContext context, ProfileController ctl) {
                 padding: const EdgeInsets.only(top: 14, bottom: 2),
                 child: Center(
                   child: Text(
-                    showAll ? 'WENIGER ZEIGEN' : 'ALLE ZEIGEN',
+                    showAll
+                        ? t('WENIGER ZEIGEN', 'SHOW LESS')
+                        : t('ALLE ZEIGEN', 'SHOW ALL'),
                     style: fsLabel.copyWith(fontSize: 12, color: FsColors.navy),
                   ),
                 ),
@@ -219,7 +231,10 @@ Future<void> showQuestsSheet(BuildContext context, ProfileController ctl) {
       const SizedBox(height: 12),
       Center(
         child: Text(
-          'Belohnungen kommen am Ende der Runde von selbst.',
+          t(
+            'Belohnungen kommen am Ende der Runde von selbst.',
+            'Rewards are added automatically at the end of a round.',
+          ),
           style: _body.copyWith(
             fontSize: 12.5,
             fontWeight: FontWeight.w500,
@@ -326,7 +341,7 @@ class _ProgressRow extends StatelessWidget {
                     SizedBox(
                       width: 86,
                       child: Text(
-                        done ? 'Erledigt' : '$shown / $target',
+                        done ? t('Erledigt', 'Done') : '$shown / $target',
                         style: fsLabel.copyWith(
                           letterSpacing: 0.3,
                           fontSize: 11.5,
@@ -375,7 +390,8 @@ class RewardsSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final lines = <(String, int)>[
       for (final q in rewards.quests) (q.text, q.reward),
-      for (final a in rewards.achievements) ('Erfolg: ${a.title}', a.reward),
+      for (final a in rewards.achievements)
+        (t('Erfolg: ${a.title}', 'Achievement: ${a.title}'), a.reward),
     ];
     final next = profile.nextUnlock;
     return Container(
@@ -397,7 +413,7 @@ class RewardsSummary extends StatelessWidget {
                   duration: const Duration(milliseconds: 900),
                   curve: Curves.easeOutCubic,
                   builder: (context, v, _) => Text(
-                    '+$v Münzen',
+                    t('+$v Münzen', '+$v coins'),
                     style: _body.copyWith(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
@@ -406,7 +422,7 @@ class RewardsSummary extends StatelessWidget {
                 ),
               ),
               Text(
-                'Gesamt ${profile.coins}',
+                t('Gesamt ${profile.coins}', 'Total ${profile.coins}'),
                 style: fsLabel.copyWith(fontSize: 12, letterSpacing: 0.4),
               ),
             ],
@@ -438,7 +454,10 @@ class RewardsSummary extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 4, left: 24),
               child: Text(
-                'und ${lines.length - 2} weitere',
+                t(
+                  'und ${lines.length - 2} weitere',
+                  'and ${lines.length - 2} more',
+                ),
                 style: fsLabel.copyWith(fontSize: 12, letterSpacing: 0.3),
               ),
             ),
@@ -448,9 +467,16 @@ class RewardsSummary extends StatelessWidget {
             const SizedBox(height: 5),
             Text(
               profile.coins >= next.price
-                  ? '${next.name} kannst du jetzt im Shop freischalten'
-                  : 'Nächste Freischaltung: ${next.name} '
-                        '· ${profile.coins} / ${next.price}',
+                  ? t(
+                      '${next.name} kannst du jetzt im Shop freischalten',
+                      'You can now unlock ${next.name} in the shop',
+                    )
+                  : t(
+                      'Nächste Freischaltung: ${next.name} '
+                          '· ${profile.coins} / ${next.price}',
+                      'Next unlock: ${next.name} '
+                          '· ${profile.coins} / ${next.price}',
+                    ),
               style: fsLabel.copyWith(fontSize: 12, letterSpacing: 0.3),
             ),
           ],

@@ -1,3 +1,5 @@
+import '../../l10n/tr.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../game/flipstack_game.dart';
@@ -24,20 +26,20 @@ const _mintTint = ColorFilter.matrix(<double>[
 ]);
 
 /// Reihenfolge und Namen der Reiter (Masterbrief, Abschnitt Shop).
-const _tabs = [
-  (CosmeticCategory.platform, 'Plattformen'),
-  (CosmeticCategory.blocks, 'Blöcke'),
-  (CosmeticCategory.background, 'Hintergründe'),
-  (CosmeticCategory.effect, 'Effekte'),
+List<(CosmeticCategory, String)> get _tabs => [
+  (CosmeticCategory.platform, t('Plattformen', 'Platforms')),
+  (CosmeticCategory.blocks, t('Blöcke', 'Blocks')),
+  (CosmeticCategory.background, t('Hintergründe', 'Backgrounds')),
+  (CosmeticCategory.effect, t('Effekte', 'Effects')),
 ];
 
 /// Kategorien je Reiter. Unter "Blöcke" stehen Material und Farben
 /// untereinander; beides lässt sich frei kombinieren.
-const _sections = {
+Map<CosmeticCategory, List<(CosmeticCategory, String)>> get _sections => {
   CosmeticCategory.platform: [(CosmeticCategory.platform, '')],
   CosmeticCategory.blocks: [
     (CosmeticCategory.material, 'MATERIAL'),
-    (CosmeticCategory.blocks, 'FARBEN'),
+    (CosmeticCategory.blocks, t('FARBEN', 'COLOURS')),
   ],
   CosmeticCategory.background: [(CosmeticCategory.background, '')],
   CosmeticCategory.effect: [(CosmeticCategory.effect, '')],
@@ -63,7 +65,7 @@ class ShopPanel extends StatefulWidget {
 }
 
 class _ShopPanelState extends State<ShopPanel> {
-  CosmeticCategory _tab = _tabs.first.$1;
+  CosmeticCategory _tab = CosmeticCategory.platform;
 
   /// Je Kategorie das gerade angesehene Stück (Anprobe).
   final Map<CosmeticCategory, String> _viewing = {};
@@ -110,24 +112,31 @@ class _ShopPanelState extends State<ShopPanel> {
       builder: (context) => AlertDialog(
         backgroundColor: FsColors.cream,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text('${item.name} freischalten?', style: _name),
+        title: Text(
+          t('${item.name} freischalten?', 'Unlock ${item.name}?'),
+          style: _name,
+        ),
         content: Text(
-          'Das kostet ${item.price} Münzen. Danach hast du noch '
-          '${p.coins - item.price}.',
+          t(
+            'Das kostet ${item.price} Münzen. Danach hast du noch '
+                '${p.coins - item.price}.',
+            'This costs ${item.price} coins. You will have '
+                '${p.coins - item.price} left.',
+          ),
           style: _name.copyWith(fontSize: 15, fontWeight: FontWeight.w500),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: Text(
-              'Abbrechen',
+              t('Abbrechen', 'Cancel'),
               style: _name.copyWith(fontSize: 15, color: FsColors.textMuted),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(
-              'Freischalten',
+              t('Freischalten', 'Unlock'),
               style: _name.copyWith(fontSize: 15, color: _mintText),
             ),
           ),
@@ -167,7 +176,7 @@ class _ShopPanelState extends State<ShopPanel> {
                       size: 46,
                       color: FsColors.cream,
                       iconColor: FsColors.navy,
-                      semanticLabel: 'Shop schließen',
+                      semanticLabel: t('Shop schließen', 'Close shop'),
                     ),
                   ],
                 ),
@@ -180,7 +189,10 @@ class _ShopPanelState extends State<ShopPanel> {
                 bottom: height * 0.60 + 14,
                 child: Center(
                   child: FsChip(
-                    'Anprobe: ${trying.join(', ')}',
+                    t(
+                      'Anprobe: ${trying.join(', ')}',
+                      'Trying on: ${trying.join(', ')}',
+                    ),
                     color: FsColors.navy,
                   ),
                 ),
@@ -365,12 +377,12 @@ class _Card extends StatelessWidget {
     final affordable = profile.coins >= item.price;
     final Widget status = equipped
         ? Text(
-            'Ausgewählt',
+            t('Ausgewählt', 'Selected'),
             style: _name.copyWith(fontSize: 13, color: _mintText),
           )
         : owned
         ? Text(
-            'Im Besitz',
+            t('Im Besitz', 'Owned'),
             style: _name.copyWith(fontSize: 13, color: FsColors.textMuted),
           )
         : Row(
@@ -476,12 +488,15 @@ class _Action extends StatelessWidget {
     final owned = profile.owns(item.id);
     final missing = item.price - profile.coins;
     final (label, enabled) = equipped
-        ? ('AUSGEWÄHLT', false)
+        ? (t('AUSGEWÄHLT', 'SELECTED'), false)
         : owned
-        ? ('AUSWÄHLEN', true)
+        ? (t('AUSWÄHLEN', 'SELECT'), true)
         : missing > 0
-        ? ('ES FEHLEN $missing MÜNZEN', false)
-        : ('FREISCHALTEN  ·  ${item.price}', true);
+        ? (t('ES FEHLEN $missing MÜNZEN', '$missing COINS SHORT'), false)
+        : (
+            t('FREISCHALTEN  ·  ${item.price}', 'UNLOCK  ·  ${item.price}'),
+            true,
+          );
     return IgnorePointer(
       ignoring: !enabled,
       child: PillButton(label, onTap: onTap, enabled: enabled, height: 56),

@@ -1,3 +1,5 @@
+import '../../l10n/tr.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../game/core/player_stats.dart';
@@ -50,7 +52,7 @@ class HomeOverlay extends StatelessWidget {
               size: 46,
               color: FsColors.cream,
               iconColor: FsColors.navy,
-              semanticLabel: 'Einstellungen',
+              semanticLabel: t('Einstellungen', 'Settings'),
             ),
           ),
           Align(
@@ -81,7 +83,10 @@ class HomeOverlay extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'DREHEN  ·  STAPELN  ·  HOCH HINAUS',
+                  t(
+                    'DREHEN  ·  STAPELN  ·  HOCH HINAUS',
+                    'ROTATE  ·  STACK  ·  AIM HIGH',
+                  ),
                   style: fsLabel.copyWith(
                     fontSize: 11.5,
                     color: FsColors.onBackgroundMuted,
@@ -98,7 +103,10 @@ class HomeOverlay extends StatelessWidget {
               children: [
                 if (stats.rounds > 0 && savedRound == null) ...[
                   Text(
-                    'BESTWERT ${stats.bestScore}   ·   HÖHE ${stats.bestHeight}',
+                    t(
+                      'BESTWERT ${stats.bestScore}   ·   HÖHE ${stats.bestHeight}',
+                      'BEST ${stats.bestScore}   ·   HEIGHT ${stats.bestHeight}',
+                    ),
                     style: fsLabel.copyWith(
                       fontSize: 12.5,
                       color: FsColors.onBackground,
@@ -108,13 +116,16 @@ class HomeOverlay extends StatelessWidget {
                 ],
                 if (savedRound != null && onContinue != null) ...[
                   PillButton(
-                    'RUNDE FORTSETZEN',
+                    t('RUNDE FORTSETZEN', 'CONTINUE ROUND'),
                     onTap: onContinue!,
                     height: 70,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Höhe ${savedRound!.height}  ·  ${savedRound!.score} Punkte',
+                    t(
+                      'Höhe ${savedRound!.height}  ·  ${savedRound!.score} Punkte',
+                      'Height ${savedRound!.height}  ·  ${savedRound!.score} points',
+                    ),
                     style: fsLabel.copyWith(
                       fontSize: 12,
                       letterSpacing: 0.6,
@@ -129,7 +140,7 @@ class HomeOverlay extends StatelessWidget {
                         horizontal: 20,
                       ),
                       child: Text(
-                        'NEUE RUNDE',
+                        t('NEUE RUNDE', 'NEW ROUND'),
                         style: fsLabel.copyWith(
                           fontSize: 12.5,
                           color: FsColors.onBackground,
@@ -138,14 +149,14 @@ class HomeOverlay extends StatelessWidget {
                     ),
                   ),
                 ] else
-                  PillButton('SPIELEN', onTap: onPlay, height: 70),
+                  PillButton(t('SPIELEN', 'PLAY'), onTap: onPlay, height: 70),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: _Secondary(
                         Icons.flag_rounded,
-                        'AUFGABEN',
+                        t('AUFGABEN', 'QUESTS'),
                         badge: profile.daily.isEmpty ? null : _dailyDone,
                         onTap: onQuests,
                       ),
