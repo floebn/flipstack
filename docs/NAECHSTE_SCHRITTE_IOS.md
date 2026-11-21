@@ -94,14 +94,21 @@ Schreib mir, was nicht wie erwartet läuft. Bei Problemen mit Werbung oder Kauf 
 
 ---
 
-## Schritt 3: Was ich im Projekt vorbereite
+## Schritt 3: Projekt für den Upload (erledigt am 22.11.2026)
 
-Sobald ich deine Antworten habe:
+- **Entscheidungen:** „Werbefrei“ 4,99 € in Deutschland, keine Kinder-App, Veröffentlichung weltweit auf Deutsch und Englisch.
+- **Release-Build:** baut ohne Fehler (70 MB).
+- **Datenschutz-Manifest:** Ein eigenes ist nicht nötig. Das fertige App-Paket enthält die Manifeste aller eingebundenen Pakete, die Daten verarbeiten oder geschützte Schnittstellen nutzen: Google Mobile Ads, User Messaging Platform, In-App-Kauf, Einstellungen-Speicher, Link-Öffner, WebView und Flutter selbst. Meine frühere Aussage, die Datei fehle noch, war zu streng.
+- **Sprachen:** Die App meldet Deutsch und Englisch an.
+- **Website:** deutsche und englische Seiten sind live.
 
-- **Datenschutz-Manifest** (`PrivacyInfo.xcprivacy`): Apple verlangt diese Datei im Projekt. Sie fehlt noch.
-- **Abgleich des Datenschutz-Etiketts** mit Googles aktueller Liste für das Werbe-SDK, damit die Tabelle in Schritt 4 stimmt.
-- **Release-Build mit echten Anzeigenblöcken** prüfen (`FS_ADS=live`).
-- **Versionsnummer** für den ersten Upload setzen (bisher 1.0.0, Build 1).
+Adressen für App Store Connect:
+
+| | Deutsch | Englisch |
+|---|---|---|
+| Privacy Policy URL | `https://bosselgo.de/flipstack/datenschutz/` | `https://bosselgo.de/flipstack/en/privacy/` |
+| Support URL | `https://bosselgo.de/flipstack/support/` | `https://bosselgo.de/flipstack/en/support/` |
+| Marketing URL | `https://bosselgo.de/flipstack/` | `https://bosselgo.de/flipstack/en/` |
 
 ---
 
