@@ -109,17 +109,19 @@ Future<void> showSettingsSheet(
                 _Link(
                   Icons.shield_outlined,
                   t('Datenschutzerklärung', 'Privacy policy'),
-                  () => _open('flipstack/datenschutz/'),
+                  () => _open(
+                    t('flipstack/datenschutz/', 'flipstack/en/privacy/'),
+                  ),
                 ),
                 _Link(
                   Icons.mail_outline_rounded,
                   'Support',
-                  () => _open('flipstack/support/'),
+                  () => _open(t('flipstack/support/', 'flipstack/en/support/')),
                 ),
                 _Link(
                   Icons.info_outline_rounded,
                   t('Impressum', 'Legal notice'),
-                  () => _open('impressum/'),
+                  () => _open(t('impressum/', 'impressum/en/')),
                 ),
               ]),
             ],
