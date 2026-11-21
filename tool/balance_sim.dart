@@ -113,15 +113,15 @@ Pick lookaheadBot({double skill = 1, int width = 8}) => (s, o, rng) {
 
 void run(
   String label,
-  RuleConfig cfg,
   Pick bot, {
-  int games = 300,
-  List<PieceShape> Function(int drawn, int height)? pool,
+  int games = 100,
+  DifficultyCurve curve = const DifficultyCurve(),
+  RuleConfig cfg = const RuleConfig(),
 }) {
-  final pieces = <int>[], heights = <int>[], scores = <int>[];
+  final pieces = <int>[], heights = <int>[];
   for (var g = 0; g < games; g++) {
     final rng = Random(g);
-    final s = GameSession(rules: Rules(cfg), seed: g, pool: pool);
+    final s = GameSession(rules: Rules(cfg), seed: g, curve: curve);
     while (s.phase != GamePhase.gameOver && s.piecesPlaced < 1500) {
       final o = s.rules.validPlacements(s.board, s.current);
       final (x, y, r) = bot(s, o, rng);
@@ -133,47 +133,173 @@ void run(
     }
     pieces.add(s.piecesPlaced);
     heights.add(s.height);
-    scores.add(s.score);
   }
   pieces.sort();
   heights.sort();
-  num avg(List<int> l) => l.reduce((a, b) => a + b) / l.length;
-  String min(int p) => (p * 3.5 / 60).toStringAsFixed(1);
+  int q(List<int> l, double f) =>
+      l[(l.length * f).floor().clamp(0, l.length - 1)];
+  String min(int p) => (p * 3.5 / 60).toStringAsFixed(1).padLeft(5);
+  final over60 = heights.where((h) => h >= 60).length * 100 ~/ games;
+  int pct(int h) => heights.where((x) => x >= h).length * 100 ~/ games;
+  final capped = pieces.where((p) => p >= 1500).length;
   print(
-    '${label.padRight(40)} Steine: Median ${pieces[games ~/ 2]}'
-    ' (10%: ${pieces[games ~/ 10]}, 90%: ${pieces[games * 9 ~/ 10]})'
-    '  ≈ ${min(pieces[games ~/ 2])} min'
-    '  Höhe Median ${heights[games ~/ 2]}'
-    '  Punkte Ø ${avg(scores).round()}',
+    '${label.padRight(34)}'
+    ' Höhe 10%/50%/90%: ${q(heights, .1).toString().padLeft(3)} /'
+    ' ${q(heights, .5).toString().padLeft(3)} / ${q(heights, .9).toString().padLeft(3)}'
+    '   Steine Median ${q(pieces, .5).toString().padLeft(4)}'
+    '   ≈${min(q(pieces, .5))} min'
+    '   ≥60: ${over60.toString().padLeft(2)} %  ≥80: ${pct(80).toString().padLeft(2)} %'
+    '  ≥100: ${pct(100).toString().padLeft(2)} %  höchste ${heights.last}'
+    '${capped > 0 ? '  ($capped Runden bei 1500 Steinen abgebrochen)' : ''}',
   );
 }
 
+/// Aufruf: dart run tool/balance_sim.dart [Runden] [Bot-Anfang] [Variante]
 void main(List<String> args) {
   final games = args.isEmpty ? 100 : int.parse(args.first);
-  final only = args.length > 1 ? args[1] : '';
-  final variants = <(String, RuleConfig, List<PieceShape> Function(int, int)?)>[
+  final onlyBot = args.length > 1 ? args[1] : '';
+  final onlyVar = args.length > 2 ? args[2] : '';
+  const never = 1 << 20;
+  final variants = <(String, DifficultyCurve)>[
     (
-      'alt: immer 4, keine Fünfer',
-      const RuleConfig(tightening: []),
-      (d, _) => PieceLibrary.forProgress(d),
+      'A alt: Fünfer 20/30, danach nichts',
+      const DifficultyCurve(
+        fivers1: 20,
+        fivers2: 30,
+        noSingle: never,
+        noDomino: never,
+        doubleFivers: never,
+        dropFrom: never,
+      ),
     ),
-    ('gewählt: 10→3, Fünfer ab 20 und 30', const RuleConfig(), null),
     (
-      'zum Vergleich: zusätzlich 30→2',
-      const RuleConfig(tightening: [(10, 3), (30, 2)]),
-      null,
+      'B nur Fünfer früher (15/25)',
+      const DifficultyCurve(
+        noSingle: never,
+        noDomino: never,
+        doubleFivers: never,
+        dropFrom: never,
+      ),
+    ),
+    (
+      'C erster Vorschlag (40/50/60/70+)',
+      const DifficultyCurve(
+        noSingle: 40,
+        noDomino: 50,
+        doubleFivers: 60,
+        dropFrom: 70,
+        dropEvery: 10,
+        maxLateDrops: 4,
+      ),
+    ),
+    (
+      'D strenger (30/40/50/60+)',
+      const DifficultyCurve(
+        noSingle: 30,
+        noDomino: 40,
+        doubleFivers: 50,
+        dropFrom: 60,
+        dropEvery: 10,
+        maxLateDrops: 4,
+      ),
+    ),
+    ('F gewählt (30/35/40, dann alle 5 ab 45)', const DifficultyCurve()),
+    (
+      'G Fünfer 10/20, dann 30/40/50/60+',
+      const DifficultyCurve(
+        fivers1: 10,
+        fivers2: 20,
+        noSingle: 30,
+        noDomino: 40,
+        doubleFivers: 50,
+        dropFrom: 60,
+        dropEvery: 10,
+        maxLateDrops: 4,
+      ),
+    ),
+    (
+      'H Fünfer doppelt früh (30/40/35/50+)',
+      const DifficultyCurve(
+        noSingle: 30,
+        noDomino: 40,
+        doubleFivers: 35,
+        dropFrom: 50,
+        dropEvery: 10,
+        maxLateDrops: 4,
+      ),
+    ),
+    (
+      'M1 30/40/50, weg ab 60 alle 10',
+      const DifficultyCurve(
+        noSingle: 30,
+        noDomino: 40,
+        doubleFivers: 50,
+        dropFrom: 60,
+        dropEvery: 10,
+        maxLateDrops: 4,
+      ),
+    ),
+    (
+      'M2 30/35/45, weg ab 55 alle 10',
+      const DifficultyCurve(
+        noSingle: 30,
+        noDomino: 35,
+        doubleFivers: 45,
+        dropFrom: 55,
+        dropEvery: 10,
+        maxLateDrops: 4,
+      ),
+    ),
+    (
+      'M3 30/40/45, weg ab 55 alle 10',
+      const DifficultyCurve(
+        noSingle: 30,
+        noDomino: 40,
+        doubleFivers: 45,
+        dropFrom: 55,
+        dropEvery: 10,
+        maxLateDrops: 4,
+      ),
+    ),
+    (
+      'M4 30/40/50, weg ab 55 alle 5',
+      const DifficultyCurve(
+        noSingle: 30,
+        noDomino: 40,
+        doubleFivers: 50,
+        dropFrom: 55,
+        dropEvery: 5,
+        maxLateDrops: 4,
+      ),
+    ),
+    ('N gewählt: 30/35/45/55, ab 60 nichts mehr', const DifficultyCurve()),
+    (
+      'E milder (50/60/70/80+)',
+      const DifficultyCurve(
+        noSingle: 50,
+        noDomino: 60,
+        doubleFivers: 70,
+        dropFrom: 80,
+        dropEvery: 10,
+        maxLateDrops: 4,
+      ),
     ),
   ];
+  // Die Bots mit "Fehlern" mischen Zufall in die Bewertung und stehen für
+  // Menschen, die nicht jede Lage optimal lösen.
   final bots = <(String, Pick)>[
-    ('Zufall', randomBot),
     ('Gierig', greedyBot),
-    ('Flächenbot', lookaheadBot(width: 1)),
-    ('Planer', lookaheadBot()),
+    ('Fläche mit vielen Fehlern', lookaheadBot(width: 1, skill: 0.55)),
+    ('Fläche mit Fehlern', lookaheadBot(width: 1, skill: 0.8)),
+    ('Fläche fehlerfrei', lookaheadBot(width: 1)),
+    ('Planer fehlerfrei', lookaheadBot()),
   ];
   for (final (name, bot) in bots) {
-    if (only.isNotEmpty && !name.startsWith(only)) continue;
-    for (final (label, cfg, pool) in variants) {
-      run('$name · $label', cfg, bot, games: games, pool: pool);
+    if (onlyBot.isNotEmpty && !name.startsWith(onlyBot)) continue;
+    print(name);
+    for (final (label, curve) in variants) {
+      if (onlyVar.isNotEmpty && !label.startsWith(onlyVar)) continue;
+      run('  $label', bot, games: games, curve: curve);
     }
   }
 }

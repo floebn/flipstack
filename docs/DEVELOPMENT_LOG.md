@@ -324,3 +324,17 @@ Die Szene wurde dabei nicht verändert. `docs/PHASE_0_ANALYSE.md` ist entspreche
 - Ergebnis: Etikett (Neuer Bestwert / Runde beendet), große hochzählende Punktzahl, Kennzahlen als Kacheln, auffällige Angebote gegen Werbung (Weiterspielen in Bernstein mit Puls, Münzen in Navy, je mit Schild „Werbung“), Aktionen unten fest.
 - Geprüft im iOS-Simulator: drei Runden gespielt, nach der dritten erscheint Googles Vollbild-Testanzeige beim Tippen auf „Nochmal“; neues Ergebnis und neue Einstellungen angesehen. 84 Tests, Analyse ohne Befund.
 - Nicht geprüft: Neustart der App zwischen den Runden am Gerät (nur per Test), „jede 2. Runde“ und der Abstand am Gerät, Ergebnis auf kleinen Displays, Zustand „gekauft“ in den Einstellungen.
+
+## Schwierigkeitskurve über Höhe 30 hinaus (21.11.2026)
+
+- Anlass: Runden wurden zu lang, Höhe 60 war für den Auftraggeber die Regel. Ursache: Ab Höhe 30 stieg die Schwierigkeit nicht mehr.
+- `DifficultyCurve`: Fünfer ab 15 und 25, Einzelwürfel weg ab 30, Doppelblock weg ab 35, Fünfer doppelt ab 40, danach bis 60 alle 5 Ebenen ein einfacher Stein weniger. Fünf Varianten simuliert, Zahlen in `GAME_DESIGN.md` Abschnitt 1a.
+- Ansage für Änderungen zwischen den Etappen („Höhe 15 · …“), Rahmen in Coral auf der bisherigen Rekordhöhe, Ansage „Neue Rekordhöhe“.
+- Geprüft: 86 Tests (Kurve, Ansagen, Spielbarkeit mit kleinstem Beutel), Analyse ohne Befund, Simulation.
+- Nicht geprüft: Ansage bei Höhe 15 und Rekordrahmen am Bildschirm (im Simulator-Lauf nicht erreicht), Spielgefühl ab Höhe 30 mit Menschen.
+
+## Kurve entschärft: ab 60 keine Verschärfung mehr (21.11.2026)
+
+- Auf Wunsch: Höhe 60 soll ab und zu erreichbar sein, und danach soll nichts mehr schwerer werden. Neu: Fünfer doppelt erst ab 45, Ecke weg ab 55, danach nichts (`DifficultyCurve.maxLateDrops = 1`).
+- Simulation (Planer, 150 Runden): Endhöhe 30 / 48 / 63, Höhe 60 in 15 %, Höhe 80 in 1 %, höchste Runde 86.
+- 86 Tests, Analyse ohne Befund. Am Bildschirm nicht geprüft.

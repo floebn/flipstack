@@ -14,32 +14,54 @@ Der Brief legt Rotation, Rasterplatzierung und faire Physik fest. Offen lässt e
 6. **Spielende**, sobald der aktuelle Baustein in keiner Position und keiner der vier Orientierungen regelkonform passt.
 7. **Endlos:** Es gibt keine Obergrenze mehr. Die Höhen 10, 20, 30 … sind Etappen mit Bonus und Ansage (siehe Abschnitt 1a). Die frühere Grenze bei Höhe 30 entfiel, nachdem ein Spieltest sie mit 191 Steinen erreicht hatte.
 
-## 1a. Etappen: so steigt die Schwierigkeit
+## 1a. So steigt die Schwierigkeit (`DifficultyCurve` in `lib/game/core/piece.dart`)
 
-| Etappe (Turmhöhe) | Änderung |
+Grundsatz: kein Zeitdruck, keine neue Regel in großer Höhe. Erst kommen sperrige Formen dazu, danach fallen die einfachen Lückenfüller nach und nach weg. Jede Änderung wird angesagt und wirkt mit dem nächsten Beutel.
+
+| Turmhöhe | Änderung |
 |---|---|
 | 10 | Höhenunterschied höchstens 3 statt 4 |
-| 20 | Zwei Formen aus fünf Würfeln kommen dazu (P-Form, langer Haken); der zweite Einzelwürfel entfällt |
-| 30 | Zwei weitere Fünfer kommen dazu (U-Form, Kreuz) |
-| 40, 50, … | nur Bonus |
+| 15 | zwei Formen aus fünf Würfeln (P-Form, langer Haken); der zweite Einzelwürfel entfällt |
+| 25 | zwei weitere Fünfer (U-Form, Kreuz) |
+| 30 | der Einzelwürfel fällt ganz weg |
+| 35 | der Doppelblock fällt weg |
+| 45 | alle Fünfer sind doppelt im Beutel |
+| 55 | die Ecke fällt weg |
+| ab 60 | nichts mehr: Wer so weit kommt, wird nicht zusätzlich gebremst |
 
-Neue Formen erscheinen erst mit dem nächsten Beutel, also bis zu 14 Steine nach der Etappe.
+Etappen mit +500 bleiben bei 10, 20, 30 …
 
-### Ergebnis der Bot-Simulation (`dart run tool/balance_sim.dart`, 100 Runden je Zeile, Median der abgelegten Steine)
+### Simulation (`dart run tool/balance_sim.dart`, 21.11.2026)
 
-| Bot | Alte Regeln (immer 4, keine Fünfer) | **Gewählt** | Zusätzlich Unterschied 2 ab Höhe 30 |
+Höhe am Rundenende als 10 % / Median / 90 %, dahinter die Dauer der mittleren Runde bei 3,5 s je Zug. 150 Runden je Zeile.
+
+| Bot | vorher (Fünfer 20/30, danach nichts) | **gewählt** | höchste Runde (gewählt) |
 |---|---|---|---|
-| Zufall | 23 | 23 | 23 |
-| Gierig (tief und gestützt ablegen) | 56 | 56 | 56 |
-| Flächenbot (hält die Oberfläche flach, ein Zug voraus) | über 1500 (Abbruch) | 219, Höhe 30 | 215 |
-| Planer (plant den Vorschau-Stein ein) | über 1500 (Abbruch) | 434, Höhe 64 | 245, Höhe 33 |
+| Gierig | 6 / 8 / 12 · 3 min | 6 / 8 / 12 · 3 min | 18 |
+| Fläche mit vielen Fehlern | 10 / 18 / 31 · 8 min | 10 / 17 / 27 · 7 min | 51 |
+| Fläche mit Fehlern | 12 / 24 / 34 · 10 min | 12 / 22 / 31 · 10 min | 45 |
+| Fläche fehlerfrei | 14 / 30 / 40 · 13 min | 14 / 25 / 35 · 11 min | 44 |
+| Planer fehlerfrei | 37 / 57 / 147 · 23 min | 30 / 48 / 63 · 19 min | 86 |
+
+Planer mit der gewählten Kurve: Höhe 60 in 15 % der Runden, Höhe 80 in 1 %, Höhe 100 nie.
+
+Verglichene Varianten (Planer, Anteil der Runden mit Höhe 60 oder mehr):
+
+| Variante | ≥ 60 |
+|---|---|
+| vorher: nichts ab 30 | 48 % |
+| Stufen bei 40/50/60, dann alle 10 | 35 % |
+| Einzel 30, Doppelblock 40, Fünfer doppelt 45, Ecke 55 … | 25 % |
+| **gewählt:** Einzel 30, Doppelblock 35, Fünfer doppelt 45, Ecke 55, danach nichts | 15 % |
+| wie gewählt, aber ab 65 weitere Steine weg | 13 % |
+| dicht: 30/35/40, dann alle 5 ab 45 | 1 % |
 
 Was daraus folgt:
 
-- Mit den alten Regeln war das Spiel für sauberes Spiel praktisch endlos. Die Grenze bei 30 hat das verdeckt.
-- **Höhenunterschied 2 ist eine Wand:** Auch der Planer scheitert wenige Züge danach. Die Stufe wurde deshalb verworfen.
-- Die Fünfer sind der stärkere Hebel als der Höhenunterschied. Ohne sie schafft der Flächenbot bei Unterschied 3 im Median 304 Steine.
-- Bei rund 3,5 Sekunden je Zug wären 219 Steine knapp 13 Minuten. Das ist länger als das Ziel von 5–8 Minuten für geübte Spieler. Die Bots machen aber keine Flüchtigkeitsfehler. Wo Menschen landen, muss der Spieltest zeigen; die Schwellen sind Konstanten (`RuleConfig.tightening`, `PieceLibrary.bigPiecesFromHeight`).
+- Die Kurve trifft fast nur starke Spieler. Wer vor Höhe 30 scheitert, merkt außer den früheren Fünfern nichts.
+- Der Doppelblock ist der stärkste späte Hebel: bei 40 statt 35 verdoppelt sich der Anteil über Höhe 60.
+- „Ab 60 nichts mehr“ kostet wenig: 15 % statt 13 %. Der Beutel ist ab 55 so sperrig, dass auch ohne weitere Stufen niemand endlos spielt.
+- Grenzen: Die Bots sind keine Menschen, 3,5 s je Zug ist eine Annahme, und bei 100 bis 150 Runden sind einige Prozentpunkte Zufall. Geeicht ist die Kurve an einem einzigen Spieler.
 
 ## 2. Bausteine und Schwierigkeit
 

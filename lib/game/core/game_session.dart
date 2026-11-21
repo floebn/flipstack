@@ -64,6 +64,7 @@ class GameSession {
     int? seed,
     List<PieceShape>? shapes,
     List<PieceShape> Function(int drawn, int height)? pool,
+    this.curve = const DifficultyCurve(),
   }) : rules = rules ?? const Rules() {
     board = Board(this.rules.config.grid);
     _bag = PieceBag(
@@ -71,7 +72,7 @@ class GameSession {
           ? (_) => shapes
           : pool != null
           ? (drawn) => pool(drawn, board.maxHeight)
-          : (drawn) => PieceLibrary.forProgress(drawn, height: board.maxHeight),
+          : (drawn) => curve.pool(drawn, board.maxHeight),
       seed: seed,
     );
     current = _bag.next();
@@ -96,6 +97,9 @@ class GameSession {
       : (1 + comboStep * (combo - 1)).clamp(1.0, maxMultiplier);
 
   final Rules rules;
+
+  /// Wie die Formenmischung mit der Höhe schwerer wird.
+  final DifficultyCurve curve;
   late final PieceBag _bag;
   late final Board board;
 

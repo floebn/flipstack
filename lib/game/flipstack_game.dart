@@ -206,6 +206,13 @@ class FlipstackGame extends FlameGame {
 
   /// Etappen-Ansage und der Zeitpunkt, bis zu dem sie sichtbar bleibt.
   String? _notice;
+
+  /// Bis zu dieser Höhe sind Änderungen der Schwierigkeit schon angesagt.
+  int _announcedHeight = 0;
+
+  /// Rekordhöhe vor dieser Runde; eine Linie am Turm zeigt sie.
+  int _recordHeight = 0;
+  bool _recordAnnounced = false;
   double _noticeUntil = 0;
 
   /// Nur zum Testen: Runde beginnt mit so vielen vollen Ebenen
@@ -430,6 +437,9 @@ class FlipstackGame extends FlameGame {
     _session = session;
     _result = null;
     _notice = null;
+    _announcedHeight = session.height;
+    _recordHeight = _stats.bestHeight;
+    _recordAnnounced = false;
     _fromDeg = 0;
     _rotT = 1;
     _queuedRotation = null;
@@ -593,6 +603,25 @@ class FlipstackGame extends FlameGame {
       feedback.combo(sc.combo);
     }
 
+    // Änderungen der Schwierigkeit zwischen den Etappen (z. B. bei Höhe 15)
+    if (sc.stage == 0) {
+      for (var h = _announcedHeight + 1; h <= s.height; h++) {
+        final change = s.curve.changeAt(h);
+        if (change != null) {
+          _notice = 'Höhe $h · $change';
+          _noticeUntil = _time + 4.5;
+        }
+      }
+    }
+    _announcedHeight = s.height;
+    if (!_recordAnnounced && _recordHeight >= 8 && s.height > _recordHeight) {
+      _recordAnnounced = true;
+      if (_time >= _noticeUntil) {
+        _notice = 'Neue Rekordhöhe';
+        _noticeUntil = _time + 3;
+      }
+    }
+
     // Bausteine direkt darunter federn leicht mit (rein optisch, kehren exakt zurück)
     final below = {for (final (x, y, z) in _landedCells) (x, y, z - 1)};
     _nudgeIds = {
@@ -650,14 +679,9 @@ class FlipstackGame extends FlameGame {
 
   /// Was sich mit der erreichten Etappe ändert.
   String _stageNotice(PlacementScore sc) {
-    final big = PieceLibrary.bigPiecesFromHeight;
     final change = sc.newSpread != null
         ? 'Ab jetzt höchstens ${sc.newSpread} Ebenen Unterschied'
-        : sc.stage == big[0]
-        ? 'Bald kommen Formen aus fünf Würfeln'
-        : sc.stage == big[1]
-        ? 'Bald kommen noch sperrigere Formen'
-        : 'Weiter so';
+        : _session.curve.changeAt(sc.stage) ?? 'Weiter so';
     return 'Etappe ${sc.stage} · $change';
   }
 
@@ -945,6 +969,21 @@ class FlipstackGame extends FlameGame {
       highlight: lowest,
       highlightColor: Color.fromRGBO(53, 182, 164, 0.30 + 0.35 * pulse),
     );
+
+    // Rekordhöhe: feiner Rahmen in Coral, sobald der Turm in ihre Nähe kommt
+    if (!_menu &&
+        s.phase != GamePhase.gameOver &&
+        _recordHeight >= 8 &&
+        s.height <= _recordHeight &&
+        s.height >= _recordHeight - 4) {
+      _renderer.renderLimitFrame(
+        canvas,
+        _projection,
+        _recordHeight.toDouble(),
+        thetaDeg,
+        const Color(0x80F27C65),
+      );
+    }
 
     if (showGuide) {
       _renderer.renderLimitFrame(

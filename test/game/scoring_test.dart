@@ -167,19 +167,76 @@ void main() {
       expect(late, isNot(contains(PieceLibrary.pentoP)));
     });
 
-    test(
-      'Fünfer kommen mit der Turmhöhe, der zweite Einzelwürfel entfällt',
-      () {
-        final at20 = PieceLibrary.forProgress(100, height: 20);
-        expect(at20, containsAll(PieceLibrary.tier5));
-        expect(at20, isNot(contains(PieceLibrary.plus)));
-        expect(at20.where((s) => s == PieceLibrary.single).length, 1);
+    test('Kurve: erst kommen Fünfer dazu, dann fallen einfache Steine weg', () {
+      const c = DifficultyCurve();
+      int count(int h, PieceShape p) =>
+          c.pool(100, h).where((s) => s == p).length;
+      expect(c.pool(100, 14), isNot(contains(PieceLibrary.pentoP)));
+      expect(c.pool(100, 15), containsAll(PieceLibrary.tier5));
+      expect(c.pool(100, 24), isNot(contains(PieceLibrary.plus)));
+      expect(c.pool(100, 25), containsAll(PieceLibrary.tier6));
+      // Einzelwürfel: doppelt, dann einfach, dann weg
+      expect(
+        [
+          count(14, PieceLibrary.single),
+          count(15, PieceLibrary.single),
+          count(30, PieceLibrary.single),
+        ],
+        [2, 1, 0],
+      );
+      expect(
+        [count(34, PieceLibrary.domino), count(35, PieceLibrary.domino)],
+        [1, 0],
+      );
+      // Fünfer doppelt ab 45
+      expect(
+        [count(44, PieceLibrary.plus), count(45, PieceLibrary.plus)],
+        [1, 2],
+      );
+      // bei 55 fällt die Ecke weg, danach wird nichts mehr schwerer
+      expect(
+        [count(54, PieceLibrary.corner), count(55, PieceLibrary.corner)],
+        [1, 0],
+      );
+      String bag(int h) => c.pool(100, h).map((s) => s.name).join(',');
+      for (final h in [60, 80, 150, 400]) {
+        expect(bag(h), bag(55), reason: 'ab 55 unverändert (Höhe $h)');
+      }
+      expect(c.pool(100, 400), contains(PieceLibrary.square));
+    });
+
+    test('jede Änderung der Kurve wird genau einmal angesagt', () {
+      const c = DifficultyCurve();
+      final announced = [
+        for (var h = 1; h <= 100; h++)
+          if (c.changeAt(h) != null) h,
+      ];
+      expect(announced, [15, 25, 30, 35, 45, 55]);
+      for (final h in announced) {
         expect(
-          PieceLibrary.forProgress(100, height: 30).toSet(),
-          PieceLibrary.all.toSet(),
+          c.pool(100, h).map((s) => s.name).join(','),
+          isNot(c.pool(100, h - 1).map((s) => s.name).join(',')),
+          reason: 'Höhe $h',
         );
-      },
-    );
+      }
+    });
+
+    test('auch mit dem kleinsten Beutel bleibt die Runde spielbar', () {
+      final s = GameSession(seed: 3);
+      for (var z = 0; z < 70; z++) {
+        for (var i = 0; i < 25; i++) {
+          s.board.add(Cell(i % 5, i ~/ 5, z, 0));
+        }
+      }
+      for (var i = 0; i < 30 && s.phase != GamePhase.gameOver; i++) {
+        final (x, y, r) = s.rules.validPlacements(s.board, s.current).first;
+        s.orientation = r;
+        s.moveTo(x, y);
+        expect(s.place(), isNotNull);
+        s.finishPlacing();
+      }
+      expect(s.piecesPlaced, greaterThan(3));
+    });
 
     test(
       'Höhenunterschied wird ab Höhe 10 enger, Bestehendes bleibt gültig',
