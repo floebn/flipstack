@@ -187,10 +187,16 @@ class DeviceFeedback extends GameFeedback {
   }
 
   @override
-  void layer() => _play('layer.wav');
+  void layer() {
+    _play('layer.wav');
+    _haptic(HapticFeedback.heavyImpact);
+  }
 
   @override
-  void milestone() => _play('milestone.wav');
+  void milestone() {
+    _play('milestone.wav');
+    _haptic(HapticFeedback.heavyImpact);
+  }
 
   @override
   void highscore() => _play('highscore.wav');

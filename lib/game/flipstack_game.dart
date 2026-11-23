@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart' show TextStyle, FontWeight;
 
 import '../services/feedback/game_feedback.dart';
+import 'render/impact_fx.dart';
 import '../services/storage/stats_store.dart';
 import 'core/board.dart';
 import 'core/game_session.dart';
@@ -108,16 +109,6 @@ class _Popup {
   final String text;
   final double wx, wy, z, delay;
   final bool accent;
-  double t = 0;
-}
-
-class _Dust {
-  _Dust(this.wx, this.wy, this.z, this.vx, this.vy, this.size, this.color);
-
-  /// Farbindex für den Effekt "Konfetti".
-  final int color;
-  double wx, wy;
-  final double z, vx, vy, size;
   double t = 0;
 }
 
@@ -220,17 +211,28 @@ class FlipstackGame extends FlameGame {
   /// Nur zum Testen: Runde beginnt mit so vielen vollen Ebenen
   /// (`--dart-define=FS_START_HEIGHT=9`).
   static const _startHeight = int.fromEnvironment('FS_START_HEIGHT');
+
+  /// Nur zum Testen: spielt im Hauptmenü reihum alle Effekte ab
+  /// (`--dart-define=FS_FX_DEMO=true`).
+  static const _fxDemo = bool.fromEnvironment('FS_FX_DEMO');
+  double _fxDemoT = 0;
+  int _fxDemoStep = 0;
   double _overT = 0;
   final List<_Popup> _popups = [];
-  final List<_Dust> _dust = [];
 
-  /// Effekt "Konfetti": Partikel in den Blockfarben statt hellem Staub.
-  bool _confetti = false;
+  /// Staub, Konfetti oder Splitter, Druckwellen und Aufblitzen.
+  final ImpactFx _fx = ImpactFx();
 
-  /// Effekt "Splitter": kleine Dreiecke in der Blockfarbe.
-  bool _shards = false;
-  final Path _shardPath = Path();
-  final _rng = math.Random();
+  /// Kurzer Ruck der Kamera beim Aufprall: Zeit seit dem Auslösen und Stärke
+  /// in Welteinheiten.
+  double _kickT = 1, _kickAmp = 0;
+
+  /// Fallstreifen gibt es erst in einer Serie (Combo beim letzten Ablegen).
+  bool _streaks = false;
+  final Paint _streakPaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
+  final Paint _flashPaint = Paint();
   final _popupPaint = TextPaint(
     style: const TextStyle(
       fontSize: 22,
@@ -260,7 +262,6 @@ class FlipstackGame extends FlameGame {
     ),
   );
   final _sceneImages = Images(prefix: 'assets/backgrounds/');
-  final _dustPaint = Paint();
 
   double get _thetaDeg {
     final target = _session.orientation * 90.0;
@@ -406,22 +407,8 @@ class FlipstackGame extends FlameGame {
   /// Zeigt den gewählten Effekt einmal auf der Bühne.
   void previewEffect() {
     if (!_ready) return;
-    final top = _session.height.toDouble();
-    for (var i = 0; i < 18; i++) {
-      final a = _rng.nextDouble() * math.pi * 2;
-      final v = 1.4 + _rng.nextDouble() * 1.8;
-      _dust.add(
-        _Dust(
-          math.cos(a) * 0.6,
-          math.sin(a) * 0.6,
-          top + 0.1,
-          math.cos(a) * v,
-          math.sin(a) * v,
-          0.06 + _rng.nextDouble() * 0.07,
-          _rng.nextInt(8),
-        ),
-      );
-    }
+    _fx.preview(_session.height.toDouble(), _renderer.sprites.palette);
+    _kick(0.5);
   }
 
   /// Übernimmt das gewählte Aussehen (Blockfarben, Hintergrund, Plattform,
@@ -461,8 +448,11 @@ class FlipstackGame extends FlameGame {
     _renderer.platformFilter = Looks.platformFilter(
       look(CosmeticCategory.platform),
     );
-    _confetti = look(CosmeticCategory.effect) == 'fx_confetti';
-    _shards = look(CosmeticCategory.effect) == 'fx_shards';
+    _fx.style = switch (look(CosmeticCategory.effect)) {
+      'fx_confetti' => FxStyle.confetti,
+      'fx_shards' => FxStyle.shards,
+      _ => FxStyle.dust,
+    };
   }
 
   void _resetRound(GameSession session) {
@@ -480,7 +470,8 @@ class FlipstackGame extends FlameGame {
     _autoTarget = null;
     _overT = 0;
     _popups.clear();
-    _dust.clear();
+    _fx.clear();
+    _streaks = false;
     _snapHover();
     _spawnT = 0;
   }
@@ -559,6 +550,27 @@ class FlipstackGame extends FlameGame {
     if (_stageT != stageTo) {
       _stageT = (_stageT + (stageTo > _stageT ? dt : -dt) / 0.28).clamp(0, 1);
     }
+    if (_menu && _fxDemo) {
+      // Nur zum Ansehen der Effekte: wechselt zwischen Landung, voller Ebene
+      // und Etappe.
+      _fxDemoT += dt;
+      if (_fxDemoT > 1.6) {
+        _fxDemoT = 0;
+        final palette = _renderer.sprites.palette;
+        final z = math.max(0, s.height - 1);
+        switch (_fxDemoStep++ % 3) {
+          case 0:
+            _fx.preview(s.height.toDouble(), palette);
+            _kick(0.6);
+          case 1:
+            _fx.layer(z, s.grid / 2, palette, palette[0]);
+            _kick(0.9);
+          default:
+            _fx.celebrate(s.height.toDouble(), 2, palette);
+            _kick(1);
+        }
+      }
+    }
     if (_menu) {
       // Beispielturm dreht sich alle paar Sekunden um 90° (zeigt die Kernmechanik)
       _menuT += dt;
@@ -606,12 +618,14 @@ class FlipstackGame extends FlameGame {
       p.t += dt / 1.0;
     }
     _popups.removeWhere((p) => p.t >= 1 + p.delay);
-    for (final d in _dust) {
-      d.t += dt / 0.45;
-      d.wx += d.vx * dt * (1 - d.t).clamp(0, 1);
-      d.wy += d.vy * dt * (1 - d.t).clamp(0, 1);
-    }
-    _dust.removeWhere((d) => d.t >= 1);
+    _fx.update(dt);
+    if (_kickT < 1) _kickT = math.min(1, _kickT + dt / 0.4);
+  }
+
+  /// Löst den Kamera-Ruck aus; [strength] 0..1.
+  void _kick(double strength) {
+    _kickT = 0;
+    _kickAmp = 0.035 + 0.075 * strength.clamp(0, 1);
   }
 
   /// Der fallende Baustein ist angekommen.
@@ -768,24 +782,42 @@ class FlipstackGame extends FlameGame {
       );
     }
 
-    // Staub am Fuss des Bausteins
-    for (final (x, y, z) in _landedCells) {
-      if (z != bottom) continue;
-      for (var i = 0; i < 3; i++) {
-        final a = _rng.nextDouble() * math.pi * 2;
-        final v = 1.2 + _rng.nextDouble() * 1.4;
-        _dust.add(
-          _Dust(
-            x - half + math.cos(a) * 0.45,
-            y - half + math.sin(a) * 0.45,
-            z + 0.06,
-            math.cos(a) * v,
-            math.sin(a) * v,
-            0.05 + _rng.nextDouble() * 0.06,
-            _shards ? _session.board.cells.last.color : _rng.nextInt(8),
-          ),
-        );
+    // Wucht wächst mit Fallhöhe und Größe des Bausteins.
+    final force =
+        ((_fallFrom / 5).clamp(0.3, 1.0) * (0.75 + 0.07 * _landedCells.length))
+            .clamp(0.0, 1.0);
+    final palette = _renderer.sprites.palette;
+    final color = palette[_session.board.cells.last.color % palette.length];
+    _fx.landing(
+      cells: [for (final (x, y, z) in _landedCells) (x - half, y - half, z)],
+      color: color,
+      palette: palette,
+      force: force,
+      clean: sc.cleanBonus > 0,
+      combo: sc.combo,
+    );
+    // Der Ruck der Kamera wächst mit der Combo; ohne Serie bleibt er aus.
+    if (sc.combo >= ImpactFx.warmCombo) {
+      _kick(force * (sc.combo >= ImpactFx.hotCombo ? 0.7 : 0.3));
+    }
+    _streaks = sc.combo >= ImpactFx.warmCombo;
+
+    // Volle Ebenen feiern: jede Höhe, die der Baustein berührt und die jetzt
+    // lückenlos ist.
+    if (sc.layers > 0) {
+      final n = _session.grid;
+      final filled = <int, int>{};
+      for (final c in _session.board.cells) {
+        filled[c.z] = (filled[c.z] ?? 0) + 1;
       }
+      for (final z in {for (final (_, _, z) in _landedCells) z}) {
+        if (filled[z] == n * n) _fx.layer(z, n / 2, palette, color);
+      }
+      _kick(0.9);
+    }
+    if (sc.stage > 0 || sc.milestones > 0) {
+      _fx.celebrate(_session.height.toDouble(), sc.stage > 0 ? 2 : 1, palette);
+      _kick(1);
     }
   }
 
@@ -901,6 +933,16 @@ class FlipstackGame extends FlameGame {
       _projection.origin = Offset(size.x / 2, playY);
     }
 
+    // Aufprall: das Bild sackt kurz nach unten und federt zurück.
+    if (_kickT < 1) {
+      final bump =
+          _kickAmp *
+          _projection.unit *
+          math.exp(-9 * _kickT) *
+          math.sin(_kickT * 24);
+      _projection.origin = _projection.origin.translate(0, bump);
+    }
+
     final thetaDeg = _thetaDeg;
     _background.render(
       canvas,
@@ -942,10 +984,13 @@ class FlipstackGame extends FlameGame {
           z: c.z + 0.5 + (falling ? fall : 0),
           color: c.color,
           frame: frame,
-          squash: c.pieceId == _squashId
-              ? 1 - 0.13 * wobble
+          squash: falling
+              // im Fall leicht gestreckt, beim Aufprall gestaucht
+              ? 1 + 0.05 * _fallT
+              : c.pieceId == _squashId
+              ? 1 - 0.15 * wobble
               : _nudgeIds.contains(c.pieceId)
-              ? 1 - 0.035 * wobble
+              ? 1 - 0.05 * wobble
               : 1,
           cell: falling ? null : (c.x, c.y, c.z),
           slot: (falling ? 2 : 0, c.x, c.y, c.z),
@@ -1060,40 +1105,37 @@ class FlipstackGame extends FlameGame {
       );
     }
 
-    for (final d in _dust) {
-      final (wx, wy) = IsoProjection.rotate(d.wx, d.wy, theta);
-      final o = _projection.projectWorld(wx, wy, d.z + d.t * 0.25);
-      if (_shards) {
-        // kleines Dreieck in der Farbe des Bausteins, dreht sich im Flug
-        final r = d.size * _projection.unit * 2.1 * (1 - 0.35 * d.t);
-        final a0 = d.t * 5 + d.vx;
-        _shardPath.reset();
-        for (var k = 0; k < 3; k++) {
-          final a = a0 + k * 2.0944;
-          final q = Offset(
-            o.dx + math.cos(a) * r,
-            o.dy + math.sin(a) * r * 0.8,
-          );
-          k == 0
-              ? _shardPath.moveTo(q.dx, q.dy)
-              : _shardPath.lineTo(q.dx, q.dy);
-        }
-        _shardPath.close();
-        final base = _renderer.sprites.palette[d.color];
-        _dustPaint.color = Color.lerp(
-          base,
-          const Color(0xFFFFFFFF),
-          0.25,
-        )!.withValues(alpha: 1 - d.t * d.t);
-        canvas.drawPath(_shardPath, _dustPaint);
-        continue;
+    // Fallstreifen: kurze helle Striche über dem fallenden Baustein.
+    if (_streaks && _fallId >= 0 && _fallT > 0.08) {
+      final len = math.min(1.6, _fallFrom * 0.4) * _fallT;
+      _streakPaint
+        ..strokeWidth = _projection.unit * 0.05
+        ..color = Color.fromRGBO(255, 255, 255, 0.5 * (1 - _fallT * 0.4));
+      final tops = <(int, int), int>{};
+      for (final (x, y, z) in _landedCells) {
+        tops[(x, y)] = math.max(tops[(x, y)] ?? z, z);
       }
-      _dustPaint.color = _confetti
-          ? _renderer.sprites.palette[d.color].withValues(
-              alpha: 0.95 * (1 - d.t),
-            )
-          : Color.fromRGBO(255, 250, 240, 0.75 * (1 - d.t));
-      canvas.drawCircle(o, d.size * _projection.unit * (0.6 + d.t), _dustPaint);
+      tops.forEach((xy, z) {
+        for (final off in const [-0.24, 0.24]) {
+          final a = _projection.project(
+            xy.$1 - half + off,
+            xy.$2 - half - off,
+            z + 1.05 + fall,
+            theta,
+          );
+          canvas.drawLine(
+            a,
+            a.translate(0, -len * _projection.unitHeight),
+            _streakPaint,
+          );
+        }
+      });
+    }
+
+    _fx.render(canvas, _projection, theta);
+    if (_fx.screenFlash > 0) {
+      _flashPaint.color = Color.fromRGBO(255, 255, 255, _fx.screenFlash);
+      canvas.drawRect(Offset.zero & size.toSize(), _flashPaint);
     }
 
     for (final p in _popups) {
@@ -1103,15 +1145,21 @@ class FlipstackGame extends FlameGame {
       final o = _projection.projectWorld(wx, wy, p.z + t * 0.9 + p.delay * 4.4);
       final a = (1 - t * t).clamp(0.0, 1.0);
       canvas.saveLayer(null, Paint()..color = Color.fromRGBO(0, 0, 0, a));
+      // Springt kurz auf; wichtige Meldungen etwas größer.
+      final pop =
+          (p.accent ? 1.18 : 1.0) *
+          (0.55 + 0.45 * Curves.easeOutBack.transform((t / 0.2).clamp(0, 1)));
       final paint = _background.theme.dark
           ? (p.accent ? _popupAccentLight : _popupPaintLight)
           : (p.accent ? _popupAccent : _popupPaint);
       // Am Bildrand bleibt die Schrift vollständig sichtbar.
-      final half = paint.getLineMetrics(p.text).width / 2 + 12;
+      final half = paint.getLineMetrics(p.text).width * pop / 2 + 12;
       final x = half * 2 >= size.x
           ? size.x / 2
           : o.dx.clamp(half, size.x - half).toDouble();
-      paint.render(canvas, p.text, Vector2(x, o.dy), anchor: Anchor.center);
+      canvas.translate(x, o.dy);
+      canvas.scale(pop);
+      paint.render(canvas, p.text, Vector2.zero(), anchor: Anchor.center);
       canvas.restore();
     }
 
