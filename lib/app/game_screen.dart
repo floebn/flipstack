@@ -24,6 +24,7 @@ import '../services/ads/ads_service.dart';
 import '../services/ads/consent.dart';
 import '../features/premium/remove_ads_sheet.dart';
 import '../services/feedback/game_feedback.dart';
+import '../features/splash/splash_overlay.dart';
 import '../services/purchases/purchase_service.dart';
 import '../services/storage/profile_store.dart';
 import '../services/storage/settings_store.dart';
@@ -43,7 +44,12 @@ class GameScreen extends StatefulWidget {
     this.testLook = '',
     this.adsMode = '',
     this.fakePurchases = false,
+    this.splash,
   });
+
+  /// Bilder für den animierten Startbildschirm; ohne sie startet die App
+  /// direkt im Hauptmenü.
+  final SplashArt? splash;
   final bool showFps;
   final int? seed;
 
@@ -210,6 +216,9 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   /// Shop liegt über dem Hauptmenü; der Beispielturm dient als Bühne.
   bool _shopOpen = false;
+
+  /// Der animierte Startbildschirm läuft noch.
+  bool _splash = true;
   late final DeviceFeedback _deviceFeedback = DeviceFeedback(_settings);
   late final GameFeedback _feedback = widget.autoplay
       ? SilentFeedback()
@@ -623,6 +632,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                       !_purchases.adsRemoved
                   ? _openRemoveAds
                   : null,
+            ),
+          // Startbildschirm liegt über allem und blendet ins Hauptmenü aus.
+          if (_splash && widget.splash != null)
+            Positioned.fill(
+              child: SplashOverlay(
+                art: widget.splash!,
+                onDone: () => setState(() => _splash = false),
+              ),
             ),
         ],
       ),

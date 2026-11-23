@@ -254,6 +254,42 @@ def add_peg(parent=None):
     return ob
 
 
+def add_arrow(color, radius, width, start_deg, sweep_deg, z, thick=0.14, head=2.1):
+    """Gebogener Pfeil in der Waagerechten: Bogen mit Spitze, leicht erhaben.
+
+    Positive sweep_deg läuft gegen den Uhrzeigersinn. z ist die Unterkante.
+    """
+    a0 = math.radians(start_deg)
+    a1 = math.radians(start_deg + sweep_deg)
+    head_len = width * head / radius * (1 if sweep_deg > 0 else -1)
+    ah = a1 - head_len
+    steps = max(8, int(abs(sweep_deg) / 4))
+    arc = [a0 + (ah - a0) * i / steps for i in range(steps + 1)]
+    pt = lambda r, a: (r * math.cos(a), r * math.sin(a), 0.0)
+    me = bpy.data.meshes.new("FS_Arrow")
+    bm = bmesh.new()
+    # Bogen als Streifen aus Vierecken, die Spitze als Dreieck.
+    outer = [bm.verts.new(pt(radius + width / 2, a)) for a in arc]
+    inner = [bm.verts.new(pt(radius - width / 2, a)) for a in arc]
+    for i in range(steps):
+        bm.faces.new([outer[i], outer[i + 1], inner[i + 1], inner[i]])
+    bm.faces.new([bm.verts.new(pt(radius + width * 1.25, ah)),
+                  bm.verts.new(pt(radius, a1)),
+                  bm.verts.new(pt(radius - width * 1.25, ah))])
+    ext = bmesh.ops.extrude_face_region(bm, geom=bm.faces[:])
+    bmesh.ops.translate(
+        bm, vec=(0, 0, thick),
+        verts=[e for e in ext["geom"] if isinstance(e, bmesh.types.BMVert)])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    bm.to_mesh(me)
+    bm.free()
+    ob = bpy.data.objects.new("Arrow", me)
+    ob.data.materials.append(material(f"M_{color}", CFG["colors"][color]))
+    ob.location = (0, 0, z)
+    collection("Pieces").objects.link(ob)
+    return ob
+
+
 def cell_center(i, j, k):
     n = CFG["grid"]
     return (i - (n - 1) / 2, j - (n - 1) / 2, k + 0.5)

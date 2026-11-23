@@ -47,3 +47,7 @@ app.*.map.json
 # Widget Preview related
 .widget_preview/
 *.blend1
+
+# Fertige Store-Bilder (Screenshots, Header, Entwürfe): rund 100 MB, lassen
+# sich mit tool/store_*.swift und tool/store_shots.sh neu erzeugen.
+/store_assets/

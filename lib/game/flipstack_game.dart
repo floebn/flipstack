@@ -1103,10 +1103,15 @@ class FlipstackGame extends FlameGame {
       final o = _projection.projectWorld(wx, wy, p.z + t * 0.9 + p.delay * 4.4);
       final a = (1 - t * t).clamp(0.0, 1.0);
       canvas.saveLayer(null, Paint()..color = Color.fromRGBO(0, 0, 0, a));
-      (_background.theme.dark
-              ? (p.accent ? _popupAccentLight : _popupPaintLight)
-              : (p.accent ? _popupAccent : _popupPaint))
-          .render(canvas, p.text, Vector2(o.dx, o.dy), anchor: Anchor.center);
+      final paint = _background.theme.dark
+          ? (p.accent ? _popupAccentLight : _popupPaintLight)
+          : (p.accent ? _popupAccent : _popupPaint);
+      // Am Bildrand bleibt die Schrift vollständig sichtbar.
+      final half = paint.getLineMetrics(p.text).width / 2 + 12;
+      final x = half * 2 >= size.x
+          ? size.x / 2
+          : o.dx.clamp(half, size.x - half).toDouble();
+      paint.render(canvas, p.text, Vector2(x, o.dy), anchor: Anchor.center);
       canvas.restore();
     }
 
