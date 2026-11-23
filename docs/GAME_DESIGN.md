@@ -119,22 +119,22 @@ Grundsatz: Münzen kaufen nur Aussehen, nie einen Spielvorteil. Es gibt keine Wa
 |---|---|
 | Runde | 1 je 100 Punkte, mindestens 1 |
 | Etappe | 10 je erreichter Etappe (Höhe 10, 20, …) |
-| Tagesaufgabe | 40–60 |
-| Wochenaufgabe | 150–250 |
-| Erfolg | 20–300, einmalig |
+| Tagesaufgabe | 40–80 |
+| Wochenaufgabe | 150–300 |
+| Erfolg | 20–1.000, einmalig |
 
 Eine Runde mit 5.000 Punkten und Höhe 20 bringt 70 Münzen, drei Tagesaufgaben zusammen rund 150.
 
-**Aufgaben:** Jeden Tag drei aus zwölf, jede Woche (ab Montag) drei aus acht. Die Auswahl hängt nur vom Datum ab und enthält nie zwei Aufgaben derselben Art. Belohnungen werden am Rundenende automatisch gutgeschrieben, es gibt nichts abzuholen.
+**Aufgaben:** Jeden Tag drei aus 28, jede Woche (ab Montag) drei aus 22, in 14 Arten (neu: Steine, Ebenen und makellose Höhe in einer einzelnen Runde). Die Auswahl hängt nur vom Datum ab und enthält nie zwei Aufgaben derselben Art. Belohnungen werden am Rundenende automatisch gutgeschrieben, es gibt nichts abzuholen.
 
-**Erfolge:** 55 in 19 Reihen, zusammen 17.500 Münzen. Die meisten Reihen haben Stufen (I bis V); das Aufgabenblatt zeigt je Reihe nur die nächste offene Stufe.
+**Erfolge:** 100 in 21 Reihen, zusammen 30.260 Münzen (alle Designs kosten zusammen 29.250). Die meisten Reihen haben Stufen (bis zu acht); das Aufgabenblatt zeigt je Reihe nur die nächste offene Stufe.
 
 | Art | Reihen |
 |---|---|
-| Leistung in einer Runde | Hoch hinaus (Höhe 10–80), Punktejäger (5.000–50.000), Gleichgewicht (Combo 10–40), Marathon (200, 400 Steine), Ebene für Ebene (10, 25 volle Ebenen), Makellos (Höhe 15 ohne Combo-Verlust), Ohne Hilfe (Höhe 40 ohne Weiterspielen), Stratege (Höhe 20 mit höchstens 20 Drehungen) |
-| Ausdauer | Baumeister (100–20.000 Steine), Saubere Arbeit, Lückenlos, Drehmeister, Dranbleiber (10–500 Runden) |
-| Regelmäßigkeit | Stammgast (7, 30, 100 Spieltage insgesamt, nicht in Folge), Pflichtbewusst (Tagesaufgaben), Wochenprofi |
-| Sammeln | Sparfuchs (verdiente Münzen), Sammler (5, 15, alle Designs), Stilbewusst |
+| Leistung in einer Runde | Hoch hinaus (Höhe 10–80, acht Stufen), Punktejäger (2.000–50.000), Gleichgewicht (Combo 5–40), Marathon (50–400 Steine), Ebene für Ebene (5–25 volle Ebenen), Makellos (Höhe 10, 15, 20 ohne Combo-Verlust), Ohne Hilfe (Höhe 20, 30, 40 ohne Weiterspielen), Stratege (Höhe 20 mit höchstens 20 Drehungen) |
+| Ausdauer | Punktesammler (50.000–1.000.000 Punkte insgesamt), Baumeister (100–20.000 Steine), Saubere Arbeit, Lückenlos, Drehmeister, Dranbleiber (10–500 Runden) |
+| Regelmäßigkeit | Stammgast (3–100 Spieltage insgesamt, nicht in Folge), Pflichtbewusst (Tagesaufgaben), Wochenprofi |
+| Sammeln | Sparfuchs (verdiente Münzen), Sammler (5, 10, 15, 25, alle Designs), Stilbewusst (1, 10, 50 Runden) |
 
 Es gibt bewusst keine Erfolge für Tage in Folge, für angesehene Werbung oder für Käufe.
 

@@ -186,14 +186,20 @@ void main() {
       ]) {
         expect(Achievements.byId.containsKey(id), isTrue, reason: id);
       }
-      expect(Achievements.all.length, greaterThan(50));
+      expect(Achievements.all.length, 100);
     });
 
     test('je Reihe ist nur die nächste Stufe offen', () {
       final first = Achievements.nextOpen(const {});
       expect(first.map((a) => a.series).toSet().length, first.length);
       expect(first.where((a) => a.series == 'height').single.id, 'higher');
-      final later = Achievements.nextOpen(const {'higher', 'sky_high'});
+      final second = Achievements.nextOpen(const {'higher'});
+      expect(second.where((a) => a.series == 'height').single.id, 'height_15');
+      final later = Achievements.nextOpen(const {
+        'higher',
+        'height_15',
+        'sky_high',
+      });
       expect(later.where((a) => a.series == 'height').single.id, 'cloud');
       final all = {for (final a in Achievements.all) a.id};
       expect(Achievements.nextOpen(all), isEmpty);
@@ -270,7 +276,11 @@ void main() {
           );
       final got = [for (final a in rewards.achievements) a.id];
       expect(got, containsAll(['designs_5', 'styled']));
-      expect(after.counter(Counter.dailyDone), 3);
+      // Welche Tagesaufgaben an diesem Tag gelten, hängt vom Pool ab; gezählt
+      // werden genau die erfüllten.
+      final done = after.daily.where((q) => q.done).length;
+      expect(done, greaterThan(0));
+      expect(after.counter(Counter.dailyDone), done);
       expect(after.counter(Counter.designs), 5);
       expect(
         Achievements.byId['designs_${Achievements.purchasable}'],

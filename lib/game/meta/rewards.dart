@@ -88,6 +88,13 @@ enum QuestKind {
 
   /// Anzahl Runden, die mindestens die Höhe [QuestDef.param] erreichen.
   heightRounds,
+
+  // Neue Arten am Ende anhängen. Bestwerte innerhalb einer einzelnen Runde:
+  roundPieces,
+  roundLayers,
+
+  /// Höhe, bevor die Combo zum ersten Mal reißt.
+  flawless,
 }
 
 class QuestDef {
@@ -103,7 +110,12 @@ class QuestDef {
   final int target, reward, param;
 
   bool get isSum => switch (kind) {
-    QuestKind.height || QuestKind.combo || QuestKind.roundScore => false,
+    QuestKind.height ||
+    QuestKind.combo ||
+    QuestKind.roundScore ||
+    QuestKind.roundPieces ||
+    QuestKind.roundLayers ||
+    QuestKind.flawless => false,
     _ => true,
   };
 
@@ -137,6 +149,18 @@ class QuestDef {
       'Erreiche $target-mal Höhe $param',
       'Reach height $param $target times',
     ),
+    QuestKind.roundPieces => t(
+      'Lege $target Bausteine in einer Runde ab',
+      'Place $target pieces in one round',
+    ),
+    QuestKind.roundLayers => t(
+      'Fülle $target Ebenen in einer Runde',
+      'Complete $target layers in one round',
+    ),
+    QuestKind.flawless => t(
+      'Erreiche Höhe $target, ohne die Combo zu verlieren',
+      'Reach height $target without losing your combo',
+    ),
   };
 
   /// Beitrag einer Runde ([coins] = in dieser Runde verdiente Rundenmünzen).
@@ -151,6 +175,9 @@ class QuestDef {
     QuestKind.height => r.height,
     QuestKind.combo => r.bestCombo,
     QuestKind.heightRounds => r.height >= param ? 1 : 0,
+    QuestKind.roundPieces => r.pieces,
+    QuestKind.roundLayers => r.layers,
+    QuestKind.flawless => r.flawlessHeight,
   };
 }
 
@@ -179,6 +206,24 @@ abstract final class Quests {
     QuestDef('d_layers3', QuestKind.layers, 3, 50),
     QuestDef('d_clean20', QuestKind.cleanPlacements, 20, 50),
     QuestDef('d_rounds2', QuestKind.rounds, 2, 40),
+    // Erweiterung: mehr Stufen und neue Arten, damit sich die Tage weniger
+    // wiederholen.
+    QuestDef('d_height15', QuestKind.height, 15, 70),
+    QuestDef('d_pieces100', QuestKind.pieces, 100, 80),
+    QuestDef('d_rot25', QuestKind.rotations, 25, 50),
+    QuestDef('d_rot50', QuestKind.rotations, 50, 70),
+    QuestDef('d_combo12', QuestKind.combo, 12, 80),
+    QuestDef('d_score10000', QuestKind.score, 10000, 80),
+    QuestDef('d_layers6', QuestKind.layers, 6, 70),
+    QuestDef('d_clean40', QuestKind.cleanPlacements, 40, 70),
+    QuestDef('d_rounds3', QuestKind.rounds, 3, 50),
+    QuestDef('d_roundscore3000', QuestKind.roundScore, 3000, 50),
+    QuestDef('d_roundscore6000', QuestKind.roundScore, 6000, 70),
+    QuestDef('d_roundpieces40', QuestKind.roundPieces, 40, 50),
+    QuestDef('d_roundlayers3', QuestKind.roundLayers, 3, 60),
+    QuestDef('d_flawless6', QuestKind.flawless, 6, 60),
+    QuestDef('d_coins60', QuestKind.coins, 60, 50),
+    QuestDef('d_height10x2', QuestKind.heightRounds, 2, 60, param: 10),
   ];
 
   /// Anspruchsvoller, über mehrere Sitzungen.
@@ -191,6 +236,21 @@ abstract final class Quests {
     QuestDef('w_pieces400', QuestKind.pieces, 400, 150),
     QuestDef('w_layers25', QuestKind.layers, 25, 200),
     QuestDef('w_score30000', QuestKind.score, 30000, 200),
+    // Erweiterung
+    QuestDef('w_rounds20', QuestKind.rounds, 20, 250),
+    QuestDef('w_height30', QuestKind.height, 30, 300),
+    QuestDef('w_height25x2', QuestKind.heightRounds, 2, 300, param: 25),
+    QuestDef('w_coins800', QuestKind.coins, 800, 250),
+    QuestDef('w_score15000', QuestKind.roundScore, 15000, 300),
+    QuestDef('w_pieces800', QuestKind.pieces, 800, 250),
+    QuestDef('w_layers50', QuestKind.layers, 50, 300),
+    QuestDef('w_score60000', QuestKind.score, 60000, 300),
+    QuestDef('w_clean300', QuestKind.cleanPlacements, 300, 200),
+    QuestDef('w_rot300', QuestKind.rotations, 300, 150),
+    QuestDef('w_combo20', QuestKind.combo, 20, 250),
+    QuestDef('w_roundpieces150', QuestKind.roundPieces, 150, 250),
+    QuestDef('w_roundlayers12', QuestKind.roundLayers, 12, 250),
+    QuestDef('w_flawless15', QuestKind.flawless, 15, 300),
   ];
 
   static const perPeriod = 3;
@@ -249,7 +309,9 @@ class Achievement {
 }
 
 abstract final class Achievements {
-  static const _roman = ['', 'I', 'II', 'III', 'IV', 'V'];
+  static const _roman = [
+    '', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', //
+  ];
 
   static String _n(int v) => formatInt(v);
 
@@ -295,8 +357,8 @@ abstract final class Achievements {
       t('Hoch hinaus', 'Sky High'),
       (n) => t('Erreiche Höhe $n', 'Reach height $n'),
       Counter.bestHeight,
-      [10, 25, 40, 60, 80],
-      [50, 150, 300, 500, 800],
+      [10, 15, 25, 40, 50, 60, 70, 80],
+      [50, 80, 150, 300, 400, 500, 650, 800],
       ids: {10: 'higher', 25: 'sky_high', 40: 'cloud'},
     ),
     ..._series(
@@ -307,8 +369,8 @@ abstract final class Achievements {
         'Score $n points in one round',
       ),
       Counter.bestScore,
-      [5000, 15000, 30000, 50000],
-      [100, 250, 400, 700],
+      [2000, 5000, 10000, 15000, 20000, 30000, 50000],
+      [50, 100, 180, 250, 320, 400, 700],
       ids: {5000: 'score5k', 15000: 'score15k'},
     ),
     ..._series(
@@ -316,8 +378,8 @@ abstract final class Achievements {
       t('Gleichgewicht', 'Balance'),
       (n) => t('Erreiche eine Combo von $n', 'Reach a combo of $n'),
       Counter.bestCombo,
-      [10, 15, 25, 40],
-      [50, 100, 250, 500],
+      [5, 10, 15, 20, 25, 40],
+      [30, 50, 100, 180, 250, 500],
       ids: {15: 'balance'},
     ),
     ..._series(
@@ -328,8 +390,8 @@ abstract final class Achievements {
         'Place $n pieces in one round',
       ),
       Counter.bestRoundPieces,
-      [200, 400],
-      [200, 500],
+      [50, 100, 200, 300, 400],
+      [50, 100, 200, 350, 500],
     ),
     ..._series(
       'round_layers',
@@ -339,8 +401,8 @@ abstract final class Achievements {
         'Complete $n layers in one round',
       ),
       Counter.bestRoundLayers,
-      [10, 25],
-      [150, 400],
+      [5, 10, 15, 20, 25],
+      [80, 150, 220, 300, 400],
     ),
     ..._series(
       'flawless',
@@ -350,8 +412,8 @@ abstract final class Achievements {
         'Reach height $n without losing your combo',
       ),
       Counter.bestFlawlessHeight,
-      [15],
-      [250],
+      [10, 15, 20],
+      [120, 250, 450],
     ),
     ..._series(
       'no_help',
@@ -361,8 +423,8 @@ abstract final class Achievements {
         'Reach height $n without using Continue',
       ),
       Counter.bestHeightNoRevive,
-      [40],
-      [300],
+      [20, 30, 40],
+      [100, 200, 300],
     ),
     Achievement(
       'strategist',
@@ -377,12 +439,20 @@ abstract final class Achievements {
     ),
     // --- Ausdauer über alle Runden
     ..._series(
+      'total_score',
+      t('Punktesammler', 'Point Collector'),
+      (n) => t('Sammle insgesamt $n Punkte', 'Score $n points in total'),
+      Counter.score,
+      [50000, 250000, 1000000],
+      [100, 300, 700],
+    ),
+    ..._series(
       'pieces',
       t('Baumeister', 'Master Builder'),
       (n) => t('Lege insgesamt $n Bausteine ab', 'Place $n pieces in total'),
       Counter.pieces,
-      [100, 1000, 5000, 20000],
-      [30, 200, 400, 800],
+      [100, 500, 1000, 2500, 5000, 10000, 20000],
+      [30, 100, 200, 300, 400, 600, 800],
       ids: {1000: 'builder'},
     ),
     ..._series(
@@ -393,8 +463,8 @@ abstract final class Achievements {
         'Place $n pieces cleanly in total',
       ),
       Counter.cleanPlacements,
-      [100, 500, 2500, 10000],
-      [50, 150, 300, 600],
+      [100, 500, 1000, 2500, 5000, 10000],
+      [50, 150, 220, 300, 450, 600],
       ids: {500: 'clean500'},
     ),
     ..._series(
@@ -405,8 +475,8 @@ abstract final class Achievements {
         'Complete $n layers in total',
       ),
       Counter.layers,
-      [25, 100, 500, 2000],
-      [50, 150, 300, 600],
+      [25, 100, 250, 500, 1000, 2000],
+      [50, 150, 220, 300, 450, 600],
       ids: {100: 'layers100'},
     ),
     ..._series(
@@ -417,8 +487,8 @@ abstract final class Achievements {
         'Rotate the platform $n times in total',
       ),
       Counter.rotations,
-      [100, 1000, 5000],
-      [100, 200, 400],
+      [100, 500, 1000, 2500, 5000],
+      [100, 150, 200, 300, 400],
       ids: {100: 'rotation'},
     ),
     ..._series(
@@ -426,8 +496,8 @@ abstract final class Achievements {
       t('Dranbleiber', 'Persistent'),
       (n) => t('Spiele $n Runden', 'Play $n rounds'),
       Counter.rounds,
-      [10, 50, 200, 500],
-      [50, 200, 400, 800],
+      [10, 25, 50, 100, 200, 500],
+      [50, 120, 200, 300, 400, 800],
       ids: {50: 'persistent'},
     ),
     // --- Regelmässigkeit: Tage zählen insgesamt, nicht in Folge. Ein
@@ -437,24 +507,24 @@ abstract final class Achievements {
       t('Stammgast', 'Regular'),
       (n) => t('Spiele an $n verschiedenen Tagen', 'Play on $n different days'),
       Counter.daysPlayed,
-      [7, 30, 100],
-      [100, 300, 800],
+      [3, 7, 14, 30, 60, 100],
+      [50, 100, 180, 300, 500, 800],
     ),
     ..._series(
       'daily',
       t('Pflichtbewusst', 'Dutiful'),
       (n) => t('Erfülle $n Tagesaufgaben', 'Complete $n daily quests'),
       Counter.dailyDone,
-      [10, 50, 200],
-      [100, 250, 600],
+      [10, 25, 50, 100, 200],
+      [100, 180, 250, 400, 600],
     ),
     ..._series(
       'weekly',
       t('Wochenprofi', 'Weekly Pro'),
       (n) => t('Erfülle $n Wochenaufgaben', 'Complete $n weekly quests'),
       Counter.weeklyDone,
-      [5, 20],
-      [200, 500],
+      [5, 10, 20, 40],
+      [200, 300, 500, 800],
     ),
     // --- Sammeln
     ..._series(
@@ -462,28 +532,36 @@ abstract final class Achievements {
       t('Sparfuchs', 'Saver'),
       (n) => t('Verdiene insgesamt $n Münzen', 'Earn $n coins in total'),
       Counter.coinsEarned,
-      [1000, 5000, 20000],
-      [100, 250, 600],
+      [1000, 2500, 5000, 10000, 20000],
+      [100, 180, 250, 400, 600],
     ),
     ..._series(
       'designs',
       t('Sammler', 'Collector'),
       (n) => t('Schalte $n Designs frei', 'Unlock $n designs'),
       Counter.designs,
-      [5, 15, purchasable],
-      [150, 400, 1000],
+      [5, 10, 15, 25, purchasable],
+      [150, 250, 400, 600, 1000],
     ),
-    Achievement(
+    ..._series(
       'styled',
       t('Stilbewusst', 'Stylish'),
-      t(
-        'Spiele eine Runde mit gekauftem Material, gekaufter Plattform '
-            'und gekauftem Hintergrund',
-        'Play a round with a purchased material, platform and background',
-      ),
+      (n) => n == '1'
+          ? t(
+              'Spiele eine Runde mit gekauftem Material, gekaufter Plattform '
+                  'und gekauftem Hintergrund',
+              'Play a round with a purchased material, platform and background',
+            )
+          : t(
+              'Spiele $n Runden mit gekauftem Material, gekaufter Plattform '
+                  'und gekauftem Hintergrund',
+              'Play $n rounds with a purchased material, platform and '
+                  'background',
+            ),
       Counter.styledRounds,
-      1,
-      150,
+      [1, 10, 50],
+      [150, 250, 500],
+      ids: {1: 'styled'},
     ),
   ];
 
