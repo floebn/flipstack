@@ -94,6 +94,24 @@ Das ist der größte Hebel für ein Spiel wie FlipStack. Vor Downloads über Tik
 
 Pro Woche schreibe ich dir Ideen, Texte im Bild, Beschreibungen und Hashtags.
 
+### Fertige Videos (Stand 23.11.2026)
+
+Drei Werbevideos liegen in `store_assets/tiktok/` (1080 × 1920, 16 bis 19 Sekunden, ohne Ton). Sie sind aus Selbstspiel-Aufnahmen im Simulator geschnitten und lassen sich mit `tool/record_gameplay.sh`, `tool/tiktok_overlays.swift` und `tool/tiktok_videos.py` neu erzeugen. Den Ton wählst du beim Hochladen in TikTok aus den aktuellen Sounds.
+
+| Datei | Idee | Text in der ersten Sekunde |
+|---|---|---|
+| `flipstack_tiktok_1_regel.mp4` | die Regel, die das Spiel besonders macht | „Du kannst den Stein NICHT drehen.“ |
+| `flipstack_tiktok_2_combo.mp4` | das gute Gefühl: Neon-Design, Combo, volle Ebene | „POV: Du findest das Spiel, bei dem alles passt“ |
+| `flipstack_tiktok_3_hoehe.mp4` | Herausforderung im Zeitraffer bis zum Ende der Runde | „Wie hoch kommst du, bevor nichts mehr passt?“ |
+
+**Beschreibungen zum Kopieren:**
+
+1. `Du drehst nicht den Stein. Du drehst die Plattform. 🔄 FlipStack, kostenlos im App Store. #flipstack #puzzlegame #handyspiel #indiegame #stapeln #gamingtiktok`
+2. `Wenn einfach alles passt 😌 Combo halten, Ebene füllen, nochmal. #flipstack #satisfying #puzzlegame #entspannung #indiegame #handyspiel`
+3. `Mein Rekord liegt bei Höhe 67. Schaffst du mehr? 👀 #flipstack #challenge #puzzlegame #highscore #indiegame #handyspiel`
+
+**Vor dem Hochladen:** Die Schlusskarte sagt „Kostenlos im App Store“, also erst nach der Veröffentlichung posten. Der Link gehört in die Profilbeschreibung.
+
 ## Schritt 7: Communitys
 
 Nicht werben, sondern zeigen und fragen. Vorher immer die Regeln der jeweiligen Gruppe lesen, viele erlauben Eigenwerbung nur in bestimmten Beiträgen.

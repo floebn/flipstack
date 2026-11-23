@@ -52,7 +52,7 @@ ENDLOS UND IN DEINEM TEMPO
 
 IMMER EIN ZIEL
 • Drei neue Tagesaufgaben und drei Wochenaufgaben.
-• 55 Erfolge in mehreren Stufen.
+• 100 Erfolge in mehreren Stufen.
 • Für Punkte, Etappen und Aufgaben gibt es Münzen.
 
 DEIN STIL
@@ -123,7 +123,7 @@ ENDLESS, AT YOUR OWN PACE
 
 ALWAYS A GOAL
 • Three new daily quests and three weekly quests.
-• 55 achievements in several tiers.
+• 100 achievements in several tiers.
 • Earn coins for points, milestones and quests.
 
 YOUR STYLE

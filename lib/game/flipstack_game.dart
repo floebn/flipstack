@@ -215,6 +215,15 @@ class FlipstackGame extends FlameGame {
   /// Nur zum Testen: spielt im Hauptmenü reihum alle Effekte ab
   /// (`--dart-define=FS_FX_DEMO=true`).
   static const _fxDemo = bool.fromEnvironment('FS_FX_DEMO');
+
+  /// Nur für Aufnahmen im Selbstspiel: Pause zwischen den Schritten und ob
+  /// immer die beste Ablage gewählt wird
+  /// (`--dart-define=FS_AUTOPLAY_MS=150 --dart-define=FS_AUTOPLAY_BEST=true`).
+  static const _autoMs = int.fromEnvironment(
+    'FS_AUTOPLAY_MS',
+    defaultValue: 400,
+  );
+  static const _autoBest = bool.fromEnvironment('FS_AUTOPLAY_BEST');
   double _fxDemoT = 0;
   int _fxDemoStep = 0;
   double _overT = 0;
@@ -827,7 +836,7 @@ class FlipstackGame extends FlameGame {
     final s = _session;
     if (s.phase != GamePhase.preview) return;
     _autoT += dt;
-    if (_autoT < 0.4) return;
+    if (_autoT < _autoMs / 1000) return;
     _autoT = 0;
     if (_autoTarget == null) {
       final o = s.rules.validPlacements(s.board, s.current);
@@ -837,7 +846,10 @@ class FlipstackGame extends FlameGame {
       }
 
       o.sort((a, b) => cost(a).compareTo(cost(b)));
-      _autoTarget = o[_autoRng.nextInt(math.min(3, o.length))];
+      // Für Aufnahmen: immer die beste Ablage statt einer der besten drei.
+      _autoTarget = _autoBest
+          ? o.first
+          : o[_autoRng.nextInt(math.min(3, o.length))];
     }
     final (x, y, r) = _autoTarget!;
     if ((s.orientation - r) % 4 != 0) {
