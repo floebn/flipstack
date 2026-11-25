@@ -55,10 +55,18 @@ class ShopPanel extends StatefulWidget {
     required this.game,
     required this.onClose,
     required this.onTap,
+    this.adCoins = 0,
+    this.onWatchAd,
   });
   final ProfileController controller;
   final FlipstackGame game;
   final VoidCallback onClose, onTap;
+
+  /// Münzen gegen freiwillige Werbung: Betrag je Anzeige und der Auslöser.
+  /// Ohne Auslöser (keine Anzeige bereit, Tagesgrenze erreicht) fehlt der
+  /// Knopf ganz.
+  final int adCoins;
+  final VoidCallback? onWatchAd;
 
   @override
   State<ShopPanel> createState() => _ShopPanelState();
@@ -169,6 +177,10 @@ class _ShopPanelState extends State<ShopPanel> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CoinBadge(p.coins),
+                    if (widget.onWatchAd != null) ...[
+                      const SizedBox(width: 8),
+                      _AdCoins(widget.adCoins, widget.onWatchAd!),
+                    ],
                     const Spacer(),
                     RoundIconButton(
                       Icons.close_rounded,
@@ -616,5 +628,55 @@ class _Preview extends StatelessWidget {
           ),
         );
     }
+  }
+}
+
+/// Kleiner Knopf neben dem Kontostand: Werbung ansehen, Münzen bekommen.
+class _AdCoins extends StatelessWidget {
+  const _AdCoins(this.coins, this.onTap);
+  final int coins;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: t(
+        'Werbung ansehen und $coins Münzen bekommen',
+        'Watch an ad and get $coins coins',
+      ),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.fromLTRB(8, 0, 13, 0),
+          decoration: BoxDecoration(
+            color: FsColors.navy,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.play_circle_fill_rounded,
+                size: 22,
+                color: FsColors.reward,
+              ),
+              const SizedBox(width: 6),
+              ExcludeSemantics(
+                child: Text(
+                  t('+$coins Münzen', '+$coins coins'),
+                  style: const TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

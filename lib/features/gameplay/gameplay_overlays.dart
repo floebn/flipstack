@@ -37,6 +37,12 @@ class GameHud extends StatelessWidget {
         children: [
           Positioned(left: 22, top: 10, child: _Score(h)),
           Positioned(
+            left: 0,
+            right: 0,
+            top: 132,
+            child: Center(child: _RecordToast(h)),
+          ),
+          Positioned(
             right: 18,
             top: 8,
             child: RoundIconButton(
@@ -137,6 +143,9 @@ class GameHud extends StatelessWidget {
   }
 }
 
+/// Oben links: die Punktzahl als einziges großes Element, darunter klein
+/// Bestwert und Höhe, dann die Combo und (nur bei Bedarf) der Höhenunterschied.
+/// Bewusst ohne Flächen und Rahmen, damit das Spielfeld im Mittelpunkt bleibt.
 class _Score extends StatelessWidget {
   const _Score(this.h);
   final HudState h;
@@ -146,37 +155,278 @@ class _Score extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '${h.score}',
-          style: TextStyle(
-            fontSize: 44,
-            height: 1,
-            fontWeight: FontWeight.w800,
-            color: FsColors.onBackground,
+        // Die Zahl zählt weich zum neuen Stand hoch.
+        TweenAnimationBuilder<double>(
+          tween: Tween(end: h.score.toDouble()),
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, _) => Text(
+            '${value.round()}',
+            style: TextStyle(
+              fontSize: 44,
+              height: 1,
+              fontWeight: FontWeight.w800,
+              fontFeatures: const [FontFeature.tabularFigures()],
+              color: FsColors.onBackground,
+            ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 5),
         Text(
           t(
-            'HÖHE ${h.height}   ·   BESTWERT ${h.best}',
-            'HEIGHT ${h.height}   ·   BEST ${h.best}',
+            'BESTWERT ${h.best}   ·   HÖHE ${h.height}',
+            'BEST ${h.best}   ·   HEIGHT ${h.height}',
           ),
           style: fsLabel.copyWith(color: FsColors.onBackgroundMuted),
         ),
-        const SizedBox(height: 8),
-        // Combo: zeigt den Multiplikator der nächsten sauberen Ablage
-        AnimatedOpacity(
-          opacity: h.combo >= 1 ? 1 : 0,
-          duration: const Duration(milliseconds: 180),
-          child: FsChip(
-            'COMBO ${h.combo}   ×${formatDecimal(h.multiplier)}',
-            color: fsDarkBackground.value
-                ? const Color(0xFF34435A)
-                : FsColors.navy,
-            textColor: FsColors.reward,
-          ),
-        ),
+        const SizedBox(height: 10),
+        _Combo(h.combo, h.multiplier),
+        const SizedBox(height: 7),
+        _SpreadGauge(h.spread, h.maxSpread),
       ],
+    );
+  }
+}
+
+/// Combo als kleine Textzeile statt als dunkle Fläche: Sie springt bei jeder
+/// Steigerung kurz auf (bei jeder fünften Stufe kräftiger) und liegt danach
+/// wieder ruhig da. Der Multiplikator gilt für die nächste saubere Ablage.
+class _Combo extends StatefulWidget {
+  const _Combo(this.combo, this.multiplier);
+  final int combo;
+  final double multiplier;
+
+  @override
+  State<_Combo> createState() => _ComboState();
+}
+
+class _ComboState extends State<_Combo> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 460),
+    value: 1,
+  );
+  bool _strong = false;
+
+  @override
+  void didUpdateWidget(_Combo old) {
+    super.didUpdateWidget(old);
+    if (widget.combo > old.combo) {
+      _strong = widget.combo % 5 == 0;
+      _c.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Amber ist auf hellem Grund zu blass, dort eine dunklere Stufe.
+    final accent = fsDarkBackground.value
+        ? FsColors.reward
+        : const Color(0xFFC88A12);
+    return AnimatedOpacity(
+      opacity: widget.combo >= 1 ? 1 : 0,
+      duration: const Duration(milliseconds: 220),
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) {
+          final glow = 1 - Curves.easeOutCubic.transform(_c.value);
+          return Transform.scale(
+            scale: 1 + (_strong ? 0.34 : 0.14) * glow,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  'COMBO ${widget.combo}',
+                  style: fsLabel.copyWith(
+                    color: Color.lerp(
+                      FsColors.onBackgroundMuted,
+                      FsColors.onBackground,
+                      glow,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '×${formatDecimal(widget.multiplier)}',
+                  style: TextStyle(
+                    fontSize: 17,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    color: Color.lerp(
+                      accent,
+                      FsColors.coral,
+                      _strong ? glow : 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Zeigt, wie ungleichmäßig der Turm ist: ein schmaler Strich je Ebene
+/// Unterschied zwischen höchster und tiefster Säule. Sehr zurückhaltend und
+/// erst ab zwei Ebenen sichtbar; Farbe bekommt die Anzeige nur, wenn die
+/// Grenze erreicht ist und an der höchsten Stelle nichts mehr geht.
+class _SpreadGauge extends StatelessWidget {
+  const _SpreadGauge(this.spread, this.max);
+  final int spread, max;
+
+  @override
+  Widget build(BuildContext context) {
+    final full = spread >= max;
+    final muted = FsColors.onBackgroundMuted;
+    final color = full ? FsColors.coral : muted.withValues(alpha: 0.75);
+    return AnimatedOpacity(
+      opacity: spread >= 2 ? 1 : 0,
+      duration: const Duration(milliseconds: 220),
+      child: Semantics(
+        label: t(
+          'Höhenunterschied $spread von $max',
+          'Height gap $spread of $max',
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < max; i++)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                margin: const EdgeInsets.only(right: 3),
+                width: 11,
+                height: 3,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(1.5),
+                  color: i < spread ? color : muted.withValues(alpha: 0.2),
+                ),
+              ),
+            const SizedBox(width: 5),
+            Text(
+              t('UNTERSCHIED', 'GAP'),
+              style: fsLabel.copyWith(
+                fontSize: 9,
+                color: full ? FsColors.coral : muted.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Rekord als kurzes Ereignis statt als Daueranzeige: Die Meldung springt
+/// auf, steht einen Moment und blendet wieder aus. Sie erscheint nur in dem
+/// Augenblick, in dem der Rekord fällt, nicht beim Fortsetzen einer Runde,
+/// die schon darüber liegt. Ein neuer Punkte-Bestwert fällt etwas kräftiger
+/// aus als eine neue Rekordhöhe.
+class _RecordToast extends StatefulWidget {
+  const _RecordToast(this.h);
+  final HudState h;
+
+  @override
+  State<_RecordToast> createState() => _RecordToastState();
+}
+
+class _RecordToastState extends State<_RecordToast>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2400),
+    value: 1,
+  );
+  String _text = '';
+  bool _strong = false;
+
+  @override
+  void didUpdateWidget(_RecordToast old) {
+    super.didUpdateWidget(old);
+    final a = old.h, b = widget.h;
+    final score = a.score < a.best && b.score >= b.best && b.score > 0;
+    final height =
+        b.recordHeight > 0 &&
+        a.recordHeight == b.recordHeight &&
+        a.height <= a.recordHeight &&
+        b.height > b.recordHeight;
+    if (score) {
+      _text = t('NEUER BESTWERT!', 'NEW BEST!');
+      _strong = true;
+      _c.forward(from: 0);
+    } else if (height && !(_strong && _c.isAnimating)) {
+      _text = t('NEUE REKORDHÖHE!', 'NEW RECORD HEIGHT!');
+      _strong = false;
+      _c.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) {
+          final v = _c.value;
+          if (v >= 1) return const SizedBox.shrink();
+          final fadeIn = (v / 0.1).clamp(0.0, 1.0);
+          final fadeOut = ((1 - v) / 0.2).clamp(0.0, 1.0);
+          final pop = Curves.easeOutBack.transform((v / 0.16).clamp(0.0, 1.0));
+          final from = _strong ? 0.55 : 0.8;
+          // Heller Schein hinter der Schrift, damit sie auch vor einem
+          // Baustein lesbar bleibt.
+          final halo = [
+            Shadow(
+              color: FsColors.onBackgroundInverse.withValues(alpha: 0.9),
+              blurRadius: 10,
+            ),
+          ];
+          return Opacity(
+            opacity: fadeIn * fadeOut,
+            child: Transform.scale(
+              scale: from + (1 - from) * pop,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.star_rounded,
+                    size: _strong ? 20 : 17,
+                    color: FsColors.coral,
+                    shadows: halo,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _text,
+                    style: TextStyle(
+                      fontSize: _strong ? 16 : 14,
+                      letterSpacing: 1.6,
+                      fontWeight: FontWeight.w800,
+                      color: FsColors.coral,
+                      shadows: halo,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

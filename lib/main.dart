@@ -12,6 +12,7 @@ import 'l10n/tr.dart';
 //                 --dart-define=FS_SEED=7         feste Bausteinfolge
 //                 --dart-define=FS_COINS=3000     Testkonto mit Münzen (wird nicht gespeichert)
 //                 --dart-define=FS_START_HEIGHT=9 Runde beginnt mit vollen Ebenen
+//                 --dart-define=FS_RECORD_HEIGHT=12 Rekordhöhe vortäuschen (Rekordmarke prüfen)
 const _fps = bool.fromEnvironment('FS_FPS');
 const _seed = int.fromEnvironment('FS_SEED', defaultValue: -1);
 const _autoplay = bool.fromEnvironment('FS_AUTOPLAY');

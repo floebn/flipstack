@@ -203,6 +203,53 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     setState(() => _coinsDoubled = true);
   }
 
+  /// Münzen im Shop gegen freiwillige Werbung: ein fester Betrag je Anzeige,
+  /// höchstens [shopAdsPerDay] am Tag, damit das Spielen die Hauptquelle
+  /// für Münzen bleibt. Der Tageszähler wird gespeichert.
+  static const shopAdCoins = 40;
+  static const shopAdsPerDay = 5;
+  static const _shopAdKey = 'shop_ad_v1';
+  String _shopAdDay = '';
+  int _shopAdCount = 0;
+
+  static String get _today {
+    final d = DateTime.now();
+    return '${d.year}-${d.month}-${d.day}';
+  }
+
+  int get _shopAdsLeft =>
+      _shopAdDay == _today ? shopAdsPerDay - _shopAdCount : shopAdsPerDay;
+
+  Future<void> _loadShopAds() async {
+    try {
+      final raw = (await SharedPreferences.getInstance()).getString(_shopAdKey);
+      final parts = raw?.split(':');
+      if (parts == null || parts.length != 2) return;
+      _shopAdDay = parts[0];
+      _shopAdCount = int.tryParse(parts[1]) ?? 0;
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  Future<void> _shopCoins() async {
+    if (_adRunning || _shopAdsLeft <= 0) return;
+    _adRunning = true;
+    final ok = await _ads.showRewarded(RewardedPlacement.shopCoins);
+    _adRunning = false;
+    if (!ok || !mounted) return;
+    if (_shopAdDay != _today) {
+      _shopAdDay = _today;
+      _shopAdCount = 0;
+    }
+    _shopAdCount++;
+    SharedPreferences.getInstance()
+        .then((p) => p.setString(_shopAdKey, '$_shopAdDay:$_shopAdCount'))
+        .catchError((_) => false);
+    _profile.addBonus(shopAdCoins);
+    _feedback.reward();
+    setState(() {});
+  }
+
   /// Zwischen zwei Runden: Vollbildwerbung, falls die Regeln sie erlauben.
   Future<void> _betweenRounds() async {
     if (!_interstitialDue) return;
@@ -254,6 +301,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     _purchases.load();
     _loadSavedRound();
     if (!widget.autoplay || widget.adsMode.isNotEmpty) _loadAdPolicy();
+    _loadShopAds();
   }
 
   void _onProfile() {
@@ -541,6 +589,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               controller: _profile,
               game: _game,
               onTap: _feedback.tap,
+              adCoins: shopAdCoins,
+              onWatchAd: _ads.rewardedReady && _shopAdsLeft > 0
+                  ? _shopCoins
+                  : null,
               onClose: () {
                 _feedback.tap();
                 setState(() => _shopOpen = false);

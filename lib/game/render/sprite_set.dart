@@ -74,11 +74,6 @@ class SpriteSet {
 
   late final Image marker;
 
-  /// Eckpfosten (drehsymmetrisch).
-  late final Image peg;
-  late final double pegCenterZ;
-  late final double pegOffset;
-
   /// Plattform im Ruhezustand (volle Auflösung).
   late Image platformStill;
 
@@ -112,8 +107,6 @@ class SpriteSet {
       .._gray = d(meta['cube']['grayLevel'])
       ..tileSize = Size(d(meta['tile']['w']), d(meta['tile']['h']))
       ..tileCenterZ = d(meta['tile']['centerZ'])
-      ..pegCenterZ = d(meta['peg']['centerZ'])
-      ..pegOffset = d(meta['peg']['offset'])
       ..platformTargetZ = d(meta['platform']['targetZ'])
       ..platformFrameScale = d(meta['platform']['frameScale'])
       ..sunDir = [for (final v in meta['sunDir'] as List) d(v)];
@@ -128,7 +121,6 @@ class SpriteSet {
     s.invalidTint = s.tintFor(const Color(0xFFE5484D));
     s.cube = await images.load('cube.png');
     s.marker = await images.load('tile_marker.png');
-    s.peg = await images.load('peg.png');
     s.platformStill = await images.load('platform_still.png');
     s.platform = [
       for (var i = 0; i < s.frames; i++)

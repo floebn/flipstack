@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'board.dart';
 import 'orientation.dart';
 import 'piece.dart';
@@ -347,12 +349,25 @@ class GameSession {
       gameOverReason == GameOverReason.noPlacement &&
       !revived;
 
-  /// Setzt die Runde einmal fort: Der Stein, der nirgends passte, wird gegen
-  /// den nächsten getauscht, der passt (notfalls ein Einzelwürfel, der immer
-  /// auf das tiefste Feld passt). Der Turm bleibt, wie er ist.
+  /// So viele der zuletzt gelegten Steine nimmt die zweite Chance vom Turm.
+  static const reviveRemoves = 3;
+
+  /// Setzt die Runde einmal fort: Die zuletzt gelegten [reviveRemoves] Steine
+  /// verschwinden vom Turm, damit wieder Luft ist, und der Stein, der nirgends
+  /// passte, wird gegen den nächsten getauscht, der passt (notfalls ein
+  /// Einzelwürfel, der immer auf das tiefste Feld passt). Die Punkte bleiben.
   bool revive() {
     if (!canRevive) return false;
     revived = true;
+    // Die zuletzt gelegten Steine haben die höchsten Kennungen. Kennung 0
+    // gehört zum vorgegebenen Unterbau und bleibt liegen.
+    final ids = {
+      for (final c in board.cells)
+        if (c.pieceId > 0) c.pieceId,
+    }.toList()..sort();
+    board.removePieces(
+      ids.skip(math.max(0, ids.length - reviveRemoves)).toSet(),
+    );
     var piece = next;
     for (var i = 0; i < 40 && !rules.hasAnyValidPlacement(board, piece); i++) {
       piece = _bag.next();

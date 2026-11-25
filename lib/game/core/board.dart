@@ -45,4 +45,18 @@ class Board {
     final i = c.y * n + c.x;
     if (c.z + 1 > _heights[i]) _heights[i] = c.z + 1;
   }
+
+  /// Nimmt ganze Bausteine wieder vom Feld (zweite Chance). Nur für die
+  /// zuletzt gelegten gedacht: Über ihnen liegt nichts, es bleibt also kein
+  /// Stein in der Luft hängen.
+  void removePieces(Set<int> pieceIds) {
+    cells.removeWhere((c) => pieceIds.contains(c.pieceId));
+    _occupied.clear();
+    _heights.fillRange(0, _heights.length, 0);
+    for (final c in cells) {
+      _occupied.add(_key(c.x, c.y, c.z));
+      final i = c.y * n + c.x;
+      if (c.z + 1 > _heights[i]) _heights[i] = c.z + 1;
+    }
+  }
 }

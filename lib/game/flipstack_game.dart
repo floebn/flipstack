@@ -77,6 +77,9 @@ class HudState {
     this.combo = 0,
     this.multiplier = 1,
     this.canDrop = true,
+    this.spread = 0,
+    this.maxSpread = 4,
+    this.recordHeight = 0,
     this.hint,
     this.warning,
     this.notice,
@@ -85,6 +88,14 @@ class HudState {
   final int score, height, best, combo;
   final double multiplier;
   final bool canDrop;
+
+  /// Höhenunterschied zwischen höchster und tiefster Säule und der Wert, ab
+  /// dem nicht mehr höher gebaut werden darf.
+  final int spread, maxSpread;
+
+  /// Rekordhöhe vor dieser Runde (0 = noch kein Rekord, der sich zu zeigen
+  /// lohnt). Liegt [height] darüber, ist es ein neuer Rekord.
+  final int recordHeight;
 
   /// Warum die aktuelle Position ungültig ist.
   final String? hint;
@@ -203,7 +214,7 @@ class FlipstackGame extends FlameGame {
   /// Bis zu dieser Höhe sind Änderungen der Schwierigkeit schon angesagt.
   int _announcedHeight = 0;
 
-  /// Rekordhöhe vor dieser Runde; eine Linie am Turm zeigt sie.
+  /// Rekordhöhe vor dieser Runde; der Balken im HUD zeigt sie.
   int _recordHeight = 0;
   bool _recordAnnounced = false;
   double _noticeUntil = 0;
@@ -211,6 +222,9 @@ class FlipstackGame extends FlameGame {
   /// Nur zum Testen: Runde beginnt mit so vielen vollen Ebenen
   /// (`--dart-define=FS_START_HEIGHT=9`).
   static const _startHeight = int.fromEnvironment('FS_START_HEIGHT');
+
+  /// Testhilfe: tut so, als läge die Rekordhöhe bei diesem Wert.
+  static const _fakeRecord = int.fromEnvironment('FS_RECORD_HEIGHT');
 
   /// Nur zum Testen: spielt im Hauptmenü reihum alle Effekte ab
   /// (`--dart-define=FS_FX_DEMO=true`).
@@ -349,6 +363,7 @@ class FlipstackGame extends FlameGame {
     _snapHover();
     _spawnT = 0;
     feedback.reward();
+    _kick(0.7);
     _publish();
     return true;
   }
@@ -469,7 +484,7 @@ class FlipstackGame extends FlameGame {
     _result = null;
     _notice = null;
     _announcedHeight = session.height;
-    _recordHeight = _stats.bestHeight;
+    _recordHeight = _fakeRecord > 0 ? _fakeRecord : _stats.bestHeight;
     _recordAnnounced = false;
     _fromDeg = 0;
     _rotT = 1;
@@ -671,10 +686,10 @@ class FlipstackGame extends FlameGame {
     _announcedHeight = s.height;
     if (!_recordAnnounced && _recordHeight >= 8 && s.height > _recordHeight) {
       _recordAnnounced = true;
-      if (_time >= _noticeUntil) {
-        _notice = t('Neue Rekordhöhe', 'New record height');
-        _noticeUntil = _time + 3;
-      }
+      // Neuer Höhenrekord: Konfetti, Ring und Ruck; die Meldung zeigt das HUD.
+      _fx.celebrate(s.height.toDouble(), 2, _renderer.sprites.palette);
+      _kick(1);
+      feedback.milestone();
     }
 
     // Bausteine direkt darunter federn leicht mit (rein optisch, kehren exakt zurück)
@@ -885,6 +900,9 @@ class FlipstackGame extends FlameGame {
       combo: s.combo,
       multiplier: GameSession.multiplierFor(s.combo + 1),
       canDrop: preview && p.isValid,
+      spread: s.height - s.board.minHeight,
+      maxSpread: s.maxSpread,
+      recordHeight: _recordHeight >= 8 ? _recordHeight : 0,
       hint: !preview || p.isValid
           ? null
           : switch (p.error) {
@@ -1090,30 +1108,15 @@ class FlipstackGame extends FlameGame {
       highlightColor: Color.fromRGBO(53, 182, 164, 0.30 + 0.35 * pulse),
     );
 
-    // Rekordhöhe: feiner Rahmen in Coral, sobald der Turm in ihre Nähe kommt
-    if (!_menu &&
-        s.phase != GamePhase.gameOver &&
-        _recordHeight >= 8 &&
-        s.height <= _recordHeight &&
-        s.height >= _recordHeight - 4) {
-      _renderer.renderLimitFrame(
-        canvas,
-        _projection,
-        _recordHeight.toDouble(),
-        thetaDeg,
-        const Color(0x80F27C65),
-      );
-    }
-
-    if (showGuide) {
+    // Der Rahmen der Bauhöhen-Grenze erscheint nur, wenn der Stein wirklich
+    // zu hoch gehalten wird; die Vorwarnung übernimmt die Anzeige im HUD.
+    if (blockedByHeight) {
       _renderer.renderLimitFrame(
         canvas,
         _projection,
         s.heightLimit.toDouble(),
         thetaDeg,
-        blockedByHeight
-            ? Color.fromRGBO(229, 72, 77, 0.65 + 0.35 * pulse)
-            : const Color(0xB3F1BD58),
+        Color.fromRGBO(229, 72, 77, 0.65 + 0.35 * pulse),
       );
     }
 

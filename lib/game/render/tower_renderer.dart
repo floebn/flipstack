@@ -78,7 +78,8 @@ class TowerRenderer {
       x < 0 || y < 0 || x >= grid || y >= grid ? -1 : heights[y * grid + x];
 
   /// [heights] = Säulenhöhen (Index y * grid + x) für Schatten.
-  /// [markerCorner] = Ecke (±1, ±1) der Plattform mit Orientierungsmarke.
+  /// [markerCorner] = Ecke (±1, ±1) der Plattform, deren Kachel als
+  /// Orientierungsmarke eingefärbt ist.
   void render(
     Canvas canvas,
     IsoProjection p,
@@ -92,31 +93,6 @@ class TowerRenderer {
     final theta = thetaDeg * math.pi / 180;
     final frame = sprites.frameFor(thetaDeg);
     final scale = p.unit / sprites.ppu;
-
-    // Eckpfosten: je nach Lage hinter der Plattform, davor oder vor allem
-    double pegX = 0, pegY = 0, pegDepth = 0;
-    if (markerCorner != null) {
-      (pegX, pegY) = IsoProjection.rotate(
-        markerCorner.$1 * sprites.pegOffset,
-        markerCorner.$2 * sprites.pegOffset,
-        theta,
-      );
-      pegDepth = pegX - pegY;
-    }
-    void drawPeg() => _draw(
-      canvas,
-      sprites.peg,
-      Rect.fromLTWH(
-        0,
-        0,
-        sprites.peg.width.toDouble(),
-        sprites.peg.height.toDouble(),
-      ),
-      p.projectWorld(pegX, pegY, sprites.pegCenterZ),
-      scale,
-      _sprite,
-    );
-    if (markerCorner != null && pegDepth < -1) drawPeg();
 
     final still = thetaDeg % 90 == 0;
     final img = still ? sprites.platformStill : sprites.platform[frame];
@@ -140,7 +116,6 @@ class TowerRenderer {
         scale,
         _sprite,
       );
-      if (pegDepth >= -1 && pegDepth <= 1) drawPeg();
     }
 
     // Freie Plattformfelder: Schatten, Eck-Schattierung, Hervorhebung
@@ -228,7 +203,6 @@ class TowerRenderer {
       }
     }
 
-    if (markerCorner != null && pegDepth > 1) drawPeg();
   }
 
   final Set<int> _slots = {};

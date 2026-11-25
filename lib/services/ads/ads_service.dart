@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../shared/theme/fs_colors.dart';
 
 /// Wofür der Spieler freiwillig eine Werbung ansieht.
-enum RewardedPlacement { revive, doubleCoins }
+enum RewardedPlacement { revive, doubleCoins, shopCoins }
 
 /// Werbung hinter einer Schnittstelle. Meldet Zuhörern, wenn sich
 /// [rewardedReady] ändert, damit die Oberfläche Angebote ein- und ausblendet.

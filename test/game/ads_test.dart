@@ -138,30 +138,48 @@ void main() {
       return s;
     }
 
-    test('tauscht den Stein, lässt Turm und Punkte, geht nur einmal', () {
-      for (var seed = 1; seed <= 20; seed++) {
-        final s = blocked(seed);
-        final score = s.score, cells = s.board.cells.length;
-        expect(s.canRevive, isTrue);
-        expect(s.revive(), isTrue);
-        expect(s.phase, GamePhase.preview);
-        expect((s.score, s.board.cells.length), (score, cells));
-        expect(s.rules.hasAnyValidPlacement(s.board, s.current), isTrue);
-        expect(s.gameOverReason, isNull);
-        // Runde bis zum nächsten Ende spielen: kein zweites Mal
-        final rng = math.Random(seed);
-        while (s.phase != GamePhase.gameOver) {
-          final o = s.rules.validPlacements(s.board, s.current);
-          final (x, y, r) = o[rng.nextInt(o.length)];
-          s.orientation = r;
-          s.moveTo(x, y);
-          s.place();
-          s.finishPlacing();
+    test(
+      'nimmt die letzten drei Steine, tauscht den Stein, geht nur einmal',
+      () {
+        for (var seed = 1; seed <= 20; seed++) {
+          final s = blocked(seed);
+          final score = s.score;
+          final ids = {for (final c in s.board.cells) c.pieceId}.toList()
+            ..sort();
+          final gone = ids.skip(ids.length - 3).toSet();
+          final kept = s.board.cells
+              .where((c) => !gone.contains(c.pieceId))
+              .length;
+          expect(s.canRevive, isTrue);
+          expect(s.revive(), isTrue);
+          expect(s.phase, GamePhase.preview);
+          expect((s.score, s.board.cells.length), (score, kept));
+          expect(s.board.cells.any((c) => gone.contains(c.pieceId)), isFalse);
+          // Die Säulenhöhen sind neu berechnet und passen zu den Steinen.
+        for (var i = 0; i < s.board.n * s.board.n; i++) {
+          final x = i % s.board.n, y = i ~/ s.board.n;
+          final top = s.board.cells
+              .where((c) => c.x == x && c.y == y)
+              .fold(0, (m, c) => math.max(m, c.z + 1));
+          expect(s.board.heightAt(x, y), top);
         }
-        expect(s.canRevive, isFalse);
-        expect(s.revive(), isFalse);
-      }
-    });
+          expect(s.rules.hasAnyValidPlacement(s.board, s.current), isTrue);
+          expect(s.gameOverReason, isNull);
+          // Runde bis zum nächsten Ende spielen: kein zweites Mal
+          final rng = math.Random(seed);
+          while (s.phase != GamePhase.gameOver) {
+            final o = s.rules.validPlacements(s.board, s.current);
+            final (x, y, r) = o[rng.nextInt(o.length)];
+            s.orientation = r;
+            s.moveTo(x, y);
+            s.place();
+            s.finishPlacing();
+          }
+          expect(s.canRevive, isFalse);
+          expect(s.revive(), isFalse);
+        }
+      },
+    );
 
     test('nicht während der laufenden Runde', () {
       final s = GameSession(seed: 1);
